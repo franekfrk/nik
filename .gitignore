@@ -1,0 +1,16 @@
+# Konfiguracja lokalna, sekrety i logi
+nik.local.sh
+.env
+.env.*
+!.env.example
+*.log
+*.log.*
+logi/
+logs/
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.bak
+*.backup
+*~
