@@ -24,7 +24,7 @@ nik_response_failed() {
     return 1
 }
 nik_rcon() {
-    local command=$1 output plain rc=0 noop=0 result=OK
+    local command=$1 output plain rc=0 noop=0 silent=0 result=OK
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
     # Abort before mutation when audit logging is unavailable.
@@ -41,15 +41,19 @@ nik_rcon() {
     elif [[ $command =~ ^attribute\ [^\ ]+\ minecraft:(movement_speed|jump_strength)\ modifier\ remove\ nik:frozen$ && $plain == Attribute*' has no modifier nik:frozen' ]]; then
         noop=1
     fi
+    # Vanilla tellraw intentionally has no success text. Its only normal reply
+    # is empty; parse/target errors are still detected and transport must pass.
+    if [[ $command == 'tellraw '* && -z ${plain//[[:space:]]/} ]]; then silent=1; fi
     if ((rc == 0 && !noop)); then
-        if [[ -z ${plain//[[:space:]]/} ]] || nik_response_failed "$plain"; then rc=1; fi
+        if { [[ -z ${plain//[[:space:]]/} ]] && (( !silent )); } || nik_response_failed "$plain"; then rc=1; fi
     fi
     if ((rc)); then
         nik_log ERROR "$command" || true
         nik_message 2 error 'NIK: polecenie niepotwierdzone. Przerwano; wcześniejsze kroki mogły zostać wykonane.\n%s\n' "$output"
         return "$rc"
     fi
+    NIK_RCON_RESPONSE=$plain
     ((noop == 0)) || result=NOOP
     nik_log "$result" "$command" || { nik_message 2 error 'NIK: wykonano komendę, ale zapis wyniku do logu nie powiódł się.\n'; return 1; }
-    if ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
+    if ((silent)); then nik_message 1 success 'Wysłano wiadomość od Taty.\n'; elif ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
 }

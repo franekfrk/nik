@@ -339,3 +339,58 @@ przechowywać również na innym nośniku.
 
 **NIK v2 jest rozwijaną wersją. NIK v1 jest archiwalny i nie jest dalej rozwijany.**
 Kod i dokumentację v1 zachowano w repozytorium w `archive/v1/`.
+
+## Pozycja, powrót i wiadomości — nowe w 2.2
+
+```bash
+gdzie g1
+tp g1 gracz2
+powrot g1
+
+tata g1 "Franek, czas na kolację!"
+wiadomosc g1 "Świetna budowla! ♥"  # ta sama funkcja
+```
+
+`gdzie` odczytuje X/Y/Z, wymiar i kierunek patrzenia gracza online. Nie teleportuje.
+`tp`, `dom`, `zamek` i `dolacz` zapisują pozycję gracza sprzed udanej teleportacji,
+łącznie z wymiarem, obrotem i nachyleniem. `powrot` wraca do tego punktu.
+Każda kolejna udana teleportacja NIK zastępuje poprzedni punkt. Udany powrót
+zużywa punkt; nieudany zachowuje go do ponownej próby. Ta funkcja nie śledzi
+śmierci, portali ani teleportów wykonanych poza NIK. Punkt nie gwarantuje,
+że po późniejszych zmianach świata miejsce nadal będzie bezpieczne.
+
+Przed teleportacją NIK odczytuje pozycję, wymiar i obrót w trzech kolejnych
+zapytaniach. Brak gracza lub nierozpoznana odpowiedź przerywa operację przed
+teleportacją. Odczyty nie są atomowym zdjęciem stanu; poruszający się gracz
+może zmienić pozycję między zapytaniami. Same współrzędne pochodzą z jednego odczytu.
+Powroty są blokowane osobno dla każdego gracza, aby równoległe polecenia NIK
+nie nadpisywały punktu w trakcie tej samej operacji.
+
+Punkty przechowywane są prywatnie w `~/.nik/state/returns/` (katalog 700, pliki 600).
+To stan działania, wykluczony z Gita i obu ZIP-ów; prywatny ZIP zawiera konfigurację,
+a nie historię pozycji. Można wybrać inny katalog przez zmienną `NIK_STATE`
+ze ścieżką absolutną. `gdzie` nie zapisuje trwałego punktu powrotu.
+
+`tata` i `wiadomosc` wysyłają prywatny komunikat w czacie gry, tylko wskazanemu
+graczu. Podpis **[Tata ♥]** jest złoty, a treść biała. Treść ma 1–512 znaków,
+z polskimi znakami i emoji, bez znaków sterujących. Jest dosłownym tekstem:
+`@a`, nawiasy i ciągi wyglądające jak polecenia nie stają się selektorami ani akcjami.
+Wszystkie wiadomości są od Taty; komenda nie nadaje uprawnień graczowi.
+Podobnie jak inne komendy NIK, treść jest zapisywana w prywatnym logu.
+
+```bash
+gdzie g1 --podglad
+powrot g1 --podglad
+tata g1 "Świetna robota!" --podglad
+tata g1 -- "--pomoc"                # dosłowna treść przypominająca opcję
+```
+
+`--podglad` nie odpytuje gry i nie zapisuje ani nie zużywa punktu. Dla `powrot`
+sprawdza istniejący prywatny plik i pokazuje docelową komendę.
+Tab podpowiada graczy dla `gdzie`, `powrot`, `tata` i `wiadomosc`.
+
+Vanilla `tellraw` nie wysyła tekstu potwierdzającego do konsoli RCON. Tylko dla
+tej komendy pusta odpowiedź z poprawnym wynikiem transportu jest oczekiwana;
+błędy składni, gracza i transportu nadal przerywają operację. Potwierdzenie w
+terminalu oznacza poprawne wykonanie polecenia; nie jest potwierdzeniem
+przeczytania wiadomości ani jej wyglądu w kliencie gry.

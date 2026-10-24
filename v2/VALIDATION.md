@@ -1,6 +1,6 @@
 # NIK v2 — audyt i weryfikacja, 2026-10-24
 
-Wynik kontroli kodu lokalnie i na serwerze: **147/147 testy Bats**, `bash -n`, ShellCheck 0.11.0,
+Wynik kontroli kodu lokalnie i na serwerze: **160/160 testy Bats**, `bash -n`, ShellCheck 0.11.0,
 `py_compile` narzędzi Python i audyt całego katalogu danych.
 
 ## Znalezione i poprawione problemy
@@ -69,7 +69,7 @@ bez nadpisywania slotów, podpowiedzi literówek i polskie opcje z aliasami angi
 Testy Bats obejmują nowe komendy, walidację całego zestawu przed wykonaniem,
 kontrolę błędów gry i uzupełnianie Tab.
 
-12 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
+19 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
 izolowanym modelu Dockera oraz osobnym katalogu świata. Obejmują zgodność zawartości,
 kopię przed przywracaniem, zastępowanie starych plików, osobne wymiary,
 błędne archiwum, dowiązania, wyjście poza katalog, błąd archiwizacji, błąd
@@ -84,3 +84,29 @@ Minecraft nie był zatrzymywany. Parser produkcyjnego Minecrafta przyjął ponad
 7 nowych poleceń (4 tryby i 3 zaklęcia), a odrzucił kontrolę negatywną.
 Wykorzystano kontekst execute as @s po potwierdzeniu braku encji konsoli;
 żadnemu graczowi nie zmieniono trybu ani przedmiotu.
+
+## Rozszerzenia 2.2
+
+Dodano `gdzie`, `powrot`, `tata` i `wiadomosc`. 13 nowych testów Bats sprawdza
+odczyt pozycji, wszystkie ścieżki teleportowania, powrót z wymiarem i kierunkiem,
+prywatność plików, błędy gracza, zachowanie punktu po błędzie, podgląd bez skutków
+ubocznych, uszkodzony stan i dowiązania oraz treść wiadomości jako dosłowny JSON.
+7 nowych testów Python obejmuje parser odpowiedzi RCON, precyzję współrzędnych,
+notację wykładniczą, nieprawidłowe liczby/wymiary, tożsamość punktu i bezpieczne
+komponenty wiadomości.
+
+Kod TellRawCommand z oficjalnego pliku Mojang 26.3 potwierdza brak sendSuccess:
+polecenie wywołuje ServerPlayer.sendSystemMessage i zwraca wynik bez tekstu RCON.
+Dodano wyłącznie dla tellraw obsługę spodziewanej pustej odpowiedzi. Zwykłe
+komendy nadal odrzucają puste odpowiedzi. Testy wiadomości nie wysyłają treści
+prawdziwym graczom. Powroty są testowane na modelu; produkcyjnym graczom nie
+zmieniano pozycji w celu weryfikacji.
+
+Rzeczywisty parser Minecraft 26.3 przyjął dodatkowo 5 poleceń: odczyty Pos,
+Dimension, Rotation, powrót do innego wymiaru z obrotem i tellraw ze znakami
+polskimi, cudzysłowami i symbolem ♥. Kontrola negatywna została odrzucona.
+Polecenia uruchomiono za execute as @s po sprawdzeniu, że konsola nie ma encji;
+nie zmieniły pozycji graczy i nie wysłały im wiadomości. W chwili kontroli nie
+było skonfigurowanego gracza online, więc rzeczywisty odczyt jego danych i wygląd
+wiadomości w kliencie pozostają do potwierdzenia w grze. Log parsera:
+`~/.nik/logs/features-22-parser-check.log`.

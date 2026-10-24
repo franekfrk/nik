@@ -60,21 +60,23 @@ nik_cmd_enchant() {
 nik_cmd_tp() {
     (($# == 2 || $# == 4)) || nik_die 'Użycie: nik tp GRACZ CEL lub GRACZ X Y Z'
     nik_player "$1"; local player=$REPLY
+    local command
     if (($# == 2)); then
         local target=${2,,} x y z dimension
         nik_id "$target"
         if [[ -v NIK_PLACES[$target] ]]; then
             read -r x y z dimension <<< "${NIK_PLACES[$target]}"
-            nik_rcon "execute in $dimension run tp $player $x $y $z"
-        else nik_player "$target"; nik_rcon "tp $player $REPLY"; fi
+            command="execute in $dimension run tp $player $x $y $z"
+        else nik_player "$target"; command="tp $player $REPLY"; fi
     else
         nik_coord "$2"; nik_coord "$3"; nik_coord "$4"
         local coords="$2 $3 $4"
         if [[ $coords == *'^'* ]]; then [[ $2 == ^* && $3 == ^* && $4 == ^* ]] || nik_die 'Współrzędne ^ muszą wystąpić na wszystkich osiach.'; fi
-        nik_rcon "execute at $player run tp $player $coords"
+        command="execute at $player run tp $player $coords"
     fi
+    nik_teleport "$player" "$command"
 }
-nik_cmd_join() { nik_args 2 "$@"; nik_player "$1"; local player=$REPLY; nik_player "$2"; nik_rcon "tp $player $REPLY"; }
+nik_cmd_join() { nik_args 2 "$@"; nik_player "$1"; local player=$REPLY; nik_player "$2"; nik_teleport "$player" "tp $player $REPLY"; }
 nik_cmd_home() { nik_args 1 "$@"; [[ -v NIK_PLACES[dom] ]] || nik_die 'Brak miejsca dom.'; nik_cmd_tp "$1" dom; }
 nik_cmd_castle() { nik_args 1 "$@"; [[ -v NIK_PLACES[zamek] ]] || nik_die 'Brak miejsca zamek.'; nik_cmd_tp "$1" zamek; }
 nik_cmd_place() {
@@ -193,6 +195,11 @@ nik_cmd_rotate() (
     if awk -v cutoff="$cutoff" '$1 >= cutoff' "$NIK_LOG" > "$tmp" && mv -- "$tmp" "$NIK_LOG"; then return 0; else rm -f -- "$tmp"; return 1; fi
 )
 nik_registry() {
+    nik_register gdzie nik_cmd_where 0 'gdzie GRACZ' 'Pokaż pozycję, wymiar i kierunek gracza online.'
+    nik_register powrot nik_cmd_back 0 'powrot GRACZ' 'Wróć do pozycji sprzed ostatniej udanej teleportacji NIK.'
+    nik_register tata nik_cmd_dad 0 'tata GRACZ TREŚĆ...' 'Prywatna, kolorowa wiadomość od Taty w czacie gry.'
+    nik_register wiadomosc nik_cmd_dad 0 'wiadomosc GRACZ TREŚĆ...' 'Wiadomość od Taty; odpowiednik tata.'
+
     nik_register zaklnij nik_cmd_enchant_hand 0 'zaklnij GRACZ ZAKLĘCIE[:POZIOM]...' 'Zaklnij przedmiot w głównej ręce; nie daje nowego.'
     nik_register kreatywny nik_cmd_creative 0 'kreatywny GRACZ' 'Tryb kreatywny wskazanego gracza, w tym samym świecie.'
     nik_register przetrwanie nik_cmd_survival 0 'przetrwanie GRACZ' 'Tryb przetrwania wskazanego gracza.'
@@ -275,7 +282,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.1.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.2.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

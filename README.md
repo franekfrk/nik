@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.1.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.2.0**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -19,6 +19,8 @@ w [`archive/v1/`](archive/v1/). Archiwum zachowuje historyczny kod; instaluj v2.
 | Zaklinanie rzeczy w głównej ręce | `zaklnij g1 ostrosc:5 naprawa` |
 | Pełne, kolorowe listy | `przedmioty`, `encik co`, `efekt co` |
 | Efekty i leczenie | `efekt g1 sila 60 2`, `zdrowie g1` |
+| Pozycja i powrót po teleportacji NIK | `gdzie g1`, `powrot g1` |
+| Prywatna wiadomość od Taty w grze | `tata g1 "Świetna budowla! ♥"` |
 | Teleporty i miejsca | `dom g1`, `tp g1 gracz2`, `miejsce lista` |
 | Tryb wskazanego gracza, ten sam świat | `kreatywny g1`, `przetrwanie g1`, `obserwator g1` |
 | Własne zestawy | `zestaw zapisz wyprawa pochodnia=64 pieczona_wolowina=32` |
@@ -62,7 +64,7 @@ source "$HOME/.nik/nik.sh"
 ```
 
 Po wczytaniu działają skróty `daj`, `d`, `encik`, `zaklnij`, `kreatywny`,
-`zestaw`, `kopia`, `zapiszswiat` i pozostałe komendy oraz uzupełnianie Tab.
+`zestaw`, `kopia`, `gdzie`, `powrot`, `tata`, `zapiszswiat` i pozostałe komendy oraz uzupełnianie Tab.
 Używaj `source`, żeby dodać je do aktualnej sesji. Strict mode skryptu nie zmienia
 ustawień powłoki użytkownika. Przy aktualizacji zachowaj dotychczasowe `config/`;
 nie kopiuj ponownie przykładów na własne ustawienia.
@@ -83,6 +85,25 @@ przy wybranych operacjach, m.in. przywracaniu świata, nadpisywaniu wyposażenia
 czy restartowaniu. Klawisz Tab podpowiada polskie opcje. Angielskie opcje
 `--config`, `--dry-run`, `--confirm`, `--help`, `--version` nadal działają jako aliasy.
 Nazwy przedmiotów i zaklęć można podawać także z polskimi znakami.
+
+## Gdzie, powrót i wiadomości od Taty
+
+```bash
+gdzie g1                            # X/Y/Z, wymiar i kierunek
+dom g1                              # zapisuje pozycję sprzed teleportacji
+powrot g1                           # wraca razem z wymiarem i kierunkiem
+tata g1 "Franek, czas na kolację!"    # prywatny czat [Tata ♥]
+wiadomosc g1 "Świetna robota!"       # odpowiednik tata
+```
+
+Powrót zapamiętuje ostatnią udaną teleportację przez `tp`, `dom`, `zamek` lub
+`dolacz` i zużywa punkt po udanym powrocie. Nie śledzi śmierci, portali ani
+teleportacji poza NIK. Punkty pozostają prywatne w `~/.nik/state/returns/`,
+poza Gitem i paczkami ZIP. Gracz musi być online.
+
+Wiadomość trafia wyłącznie do wskazanego gracza: złoty podpis **[Tata ♥]**
+i biała treść, maksymalnie 512 znaków. Tekst nie uruchamia poleceń i nie
+interpretuje selektorów. Te komendy również obsługują Tab i `--podglad`.
 
 ## Zapis a kopia świata
 

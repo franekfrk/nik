@@ -1,5 +1,6 @@
 # shellcheck shell=bash
 NIK_CONFIG=${NIK_CONFIG:-$NIK_ROOT/config}
+NIK_STATE=${NIK_STATE:-$NIK_ROOT/state}
 NIK_CONTAINER=minecraft
 NIK_TIMEOUT=10
 NIK_LOG=${XDG_STATE_HOME:-$HOME/.local/state}/nik/nik.log
@@ -10,6 +11,7 @@ NIK_CONFIRM=0
 NIK_ERROR_PATTERN="^(unknown|incorrect argument|invalid |no player|no entity|no entities|could not |unable to |incompatible|cannot |can't |nothing changed|not a valid|not supported|does not support|too high|failed|an unexpected error|expected |unrecognized|entity .* has no attribute|attribute .* has no modifier|modifier .* already present|target .*doesn't have|target has no effects|.* is higher than the maximum|.* is not holding any item|.* cannot support that enchantment|.* is not a valid entity for this command|found no elements|out of world|not loaded|you do not have permission|i'm sorry|nie znaleziono|nieprawidł|nieznan)"
 declare -A NIK_PLAYERS=() NIK_ALIASES=() NIK_PLACES=()
 nik_settings() {
+    [[ $NIK_STATE == /* && $NIK_STATE != *$'\n'* && $NIK_STATE != *$'\r'* ]] || nik_die 'NIK_STATE musi być ścieżką absolutną.'
     local key value extra
     [[ -f $NIK_CONFIG/config.env ]] || nik_die "Brak $NIK_CONFIG/config.env; skopiuj config.example."
     while IFS= read -r line || [[ -n $line ]]; do

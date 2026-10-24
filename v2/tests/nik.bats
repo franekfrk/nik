@@ -3,7 +3,7 @@ setup() {
     ROOT=$(cd "$BATS_TEST_DIRNAME/.." && pwd)
     WORK=$(mktemp -d)
     cp -R "$ROOT/config.example" "$WORK/config"
-    export NIK_CONFIG="$WORK/config"
+    export NIK_CONFIG="$WORK/config" NIK_STATE="$WORK/runtime"
     printf 'LOG=%s/log/nik.log\n' "$WORK" >> "$NIK_CONFIG/config.env"
     export MOCK_CALLS="$WORK/calls" MOCK_MODE=ok MOCK_STATE="$WORK/state"
     mkdir "$WORK/bin"
@@ -14,6 +14,20 @@ if [[ $MOCK_MODE == transport ]]; then printf 'connection refused\n'; exit 7; fi
 if [[ $MOCK_MODE == timeout ]]; then sleep 3; exit 0; fi
 if [[ $1 == inspect ]]; then printf '%s\n' "${MOCK_RUNNING:-true}"; exit 0; fi
 if [[ $MOCK_MODE == response ]]; then printf '%s\n' "$MOCK_RESPONSE"; exit 0; fi
+if [[ $MOCK_MODE == travel ]]; then
+    command=${*: -1}
+    if [[ $command == 'data get entity '* ]]; then
+        field=${command##* }
+        if [[ ${MOCK_LOCATION_ERROR:-} == "$field" ]]; then printf 'No entity was found\n'; exit 0; fi
+        case $field in
+          Pos) printf '%s\n' 'PlayerOne has the following entity data: [12.5d, 64.0d, -9.25d]' ;;
+          Dimension) printf '%s\n' 'PlayerOne has the following entity data: "minecraft:the_nether"' ;;
+          Rotation) printf '%s\n' 'PlayerOne has the following entity data: [45.5f, -12.0f]' ;;
+        esac
+    elif [[ ${MOCK_TP_ERROR:-0} == 1 ]]; then printf 'No entity was found\n'
+    else printf 'Teleported PlayerOne to 1, 64, 2\n'; fi
+    exit 0
+fi
 if [[ $MOCK_MODE == stateful ]]; then
     command=${*: -1}
     read -r -a parts <<< "$command"
@@ -48,7 +62,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.1.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.2.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -639,7 +653,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.1.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.2.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -650,4 +664,121 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   [ "$status" -eq 0 ]; [[ $output == *ostrosc* ]]
   run bash -c 'source "$1"; COMP_WORDS=(nik --pot); COMP_CWORD=1; _nik_v2_complete; printf "%s\n" "${COMPREPLY[@]}"' _ "$ROOT/nik.sh"
   [ "$status" -eq 0 ]; [ "$output" = --potwierdz ]
+}
+
+@test 'where prints parsed coordinates dimension and orientation without teleport' {
+  export MOCK_MODE=travel
+  run nik gdzie g1
+  [ "$status" -eq 0 ]; [[ $output == *'X: 12.5   Y: 64   Z: -9.25'* && $output == *'minecraft:the_nether'* && $output == *'45.5°'* ]]
+  [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 3 ]; [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]; [ ! -d "$NIK_STATE" ]
+}
+@test 'teleport captures source before changing position and return consumes point' {
+  export MOCK_MODE=travel
+  run nik tp g1 1 64 2
+  [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+  [ "$(stat -c %a "$NIK_STATE/returns/PlayerOne.json")" = 600 ]
+  [ "$(stat -c %a "$NIK_STATE/returns")" = 700 ]
+  run nik powrot g1
+  [ "$status" -eq 0 ]; [[ $(cat "$MOCK_CALLS") == *'execute in minecraft:the_nether run tp PlayerOne 12.5 64 -9.25 45.5 -12'* ]]
+  [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]
+  run nik powrot g1
+  [ "$status" -eq 2 ]; [[ $output == *'Brak punktu powrotu'* ]]
+}
+@test 'home castle join and player teleport all record return points' {
+  export MOCK_MODE=travel
+  printf 'dom\t1\t64\t2\tminecraft:overworld\nzamek\t3\t70\t4\tminecraft:overworld\n' > "$NIK_CONFIG/places.tsv"
+  for command in 'dom g1' 'zamek g1' 'dolacz g1 g2' 'tp g1 g2'; do
+    read -r -a args <<< "$command"
+    run nik "${args[@]}"
+    [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+    rm "$NIK_STATE/returns/PlayerOne.json"
+  done
+}
+@test 'offline or malformed location aborts before teleport' {
+  export MOCK_MODE=travel MOCK_LOCATION_ERROR=Dimension
+  run nik tp g1 1 64 2
+  [ "$status" -eq 1 ]; [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]; [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]
+  export MOCK_MODE=ok
+  run nik tp g1 1 64 2
+  [ "$status" -eq 2 ]; [[ $output == *'Nie rozpoznano'* ]]; [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]
+}
+@test 'failed teleport preserves existing return point and removes pending file' {
+  export MOCK_MODE=travel
+  nik tp g1 1 64 2
+  old=$(cat "$NIK_STATE/returns/PlayerOne.json")
+  export MOCK_TP_ERROR=1
+  run nik tp g1 5 64 6
+  [ "$status" -eq 1 ]; [ "$(cat "$NIK_STATE/returns/PlayerOne.json")" = "$old" ]
+  run find "$NIK_STATE" -name '.pending.*'
+  [ "$output" = '' ]
+}
+@test 'failed return preserves point and preview never consumes it' {
+  export MOCK_MODE=travel
+  nik tp g1 1 64 2
+  rm "$MOCK_CALLS"
+  run nik powrot g1 --podglad
+  [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]; [ ! -e "$MOCK_CALLS" ]
+  export MOCK_TP_ERROR=1
+  run nik powrot g1
+  [ "$status" -eq 1 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+}
+@test 'position teleport and dad previews have no Docker or persistent side effects' {
+  run nik gdzie g1 --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'data get entity PlayerOne Pos'* ]]
+  run nik tp g1 1 64 2 --podglad
+  [ "$status" -eq 0 ]
+  run nik tata g1 'Cześć, Franek!' --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'tellraw PlayerOne'* && $output == *'[Tata ♥]'* ]]
+  [ ! -e "$MOCK_CALLS" ]; [ ! -d "$NIK_STATE" ]
+}
+@test 'tampered return player container dimension and coordinates are rejected before RCON' {
+  export MOCK_MODE=travel
+  nik tp g1 1 64 2
+  rm "$MOCK_CALLS"
+  python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); d["dimension"]="minecraft:overworld run kill @a"; open(p,"w").write(json.dumps(d))' "$NIK_STATE/returns/PlayerOne.json"
+  run nik powrot g1
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'return state symlinks are rejected before reading or teleporting' {
+  mkdir -p "$NIK_STATE/returns"
+  ln -s "$NIK_CONFIG/players.tsv" "$NIK_STATE/returns/PlayerOne.json"
+  run nik powrot g1
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'dad text stays literal and is addressed to only configured player' {
+  run nik --podglad tata g1 'Cześć "Franek" \ @a {"clickEvent":{"action":"run_command","value":"/kill @a"}}'
+  [ "$status" -eq 0 ]; [[ $output == *'tellraw PlayerOne '* && $output != *'tellraw @a '* ]]
+  payload=${output#*tellraw PlayerOne }
+  run python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert d[1]["text"]=="[Tata ♥] "; assert set(d[2])=={"text","color","bold"}; assert "clickEvent" in d[2]["text"]' "$payload"
+  [ "$status" -eq 0 ]
+}
+@test 'dad message rejects controls empty oversized text and unknown targets' {
+  for message in '' '   ' $'hello\nworld' $'escape\033[31m'; do
+    run nik tata g1 "$message"
+    [ "$status" -eq 2 ]
+  done
+  long=$(printf '%0513d' 0)
+  run nik tata g1 "$long"
+  [ "$status" -eq 2 ]
+  run nik tata nobody Czesc
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'silent vanilla tellraw succeeds while offline and transport errors fail' {
+  export MOCK_MODE=empty
+  run nik tata g1 Czesc
+  [ "$status" -eq 0 ]; [[ $output == *'Wysłano wiadomość od Taty'* ]]
+  export MOCK_MODE=response MOCK_RESPONSE='No player was found'
+  run nik tata g1 Czesc
+  [ "$status" -eq 1 ]
+  export MOCK_MODE=transport
+  run nik tata g1 Czesc
+  [ "$status" -eq 7 ]
+}
+@test 'new travel and message aliases and player completions are installed' {
+  run bash -c 'source "$1"; alias gdzie powrot tata wiadomosc; complete -p gdzie powrot tata wiadomosc' _ "$ROOT/nik.sh"
+  [ "$status" -eq 0 ]
+  for command in gdzie powrot tata wiadomosc; do
+    run nik __complete "$command" 1 g
+    [ "$status" -eq 0 ]; [[ $output == *'g1'* ]]
+  done
 }

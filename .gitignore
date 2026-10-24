@@ -23,3 +23,7 @@ __pycache__/
 !/v2/config/.gitkeep
 /v2/world-backups/
 /world-backups/
+
+# Bieżące pozycje graczy są prywatnym stanem działania
+/v2/state/
+/state/
