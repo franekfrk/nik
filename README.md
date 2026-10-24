@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.6.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.6.1**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się

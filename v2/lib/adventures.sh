@@ -51,9 +51,24 @@ nik_cmd_inventory() {
     nik_args 1 "$@"; nik_player "$1"; local player=$REPLY rows
     command -v python3 >/dev/null || nik_die 'Podgląd plecaka wymaga Python 3.'
     if ((NIK_DRY_RUN)); then nik_rcon "data get entity $player Inventory"; return; fi
-    nik_rcon "data get entity $player Inventory" >/dev/null || return "$?"
-    rows=$(printf '%s\n' "$NIK_RCON_RESPONSE" | python3 "$NIK_ROOT/tools/inventory.py") || return "$?"
+    rows=$(nik_inventory_read "$player" Inventory) || return "$?"
     nik_inventory_table "$1" "$rows"
+}
+# The server may truncate translated NBT components. Request only the missing
+# fields when that happens; every RCON read keeps the usual timeout and audit.
+nik_inventory_read() {
+    local player=$1 tag=$2 state='{}' plan path
+    while :; do
+        plan=$(printf '%s' "$state" | python3 "$NIK_ROOT/tools/inventory.py" --plan "$tag") || return "$?"
+        if [[ $plan == DONE || $plan == DONE$'\n'* ]]; then
+            [[ $plan != DONE ]] || return 0
+            printf '%s\n' "${plan#*$'\n'}"; return 0
+        fi
+        [[ $plan == QUERY$'\t'* ]] || nik_die 'Nieprawidłowy plan odczytu plecaka.'
+        path=${plan#*$'\t'}
+        nik_rcon "data get entity $player $path" 1 >/dev/null || return "$?"
+        state=$(printf '%s\0%s' "$state" "$NIK_RCON_RESPONSE" | python3 "$NIK_ROOT/tools/inventory.py" --update "$path") || return "$?"
+    done
 }
 nik_inventory_table() {
     local player=$1 rows=$2 heading=${3:-PLECAK GRACZA} empty=${4:-Plecak i pasek są puste.} slot name count details part width=${NIK_WIDTH:-120} name_width

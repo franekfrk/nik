@@ -22,8 +22,7 @@ nik_cmd_repair() {
     nik_args 1 "$@"; nik_player "$1"; local player=$REPLY result
     command -v python3 >/dev/null || nik_die 'Naprawa wymaga Python 3.'
     if (( !NIK_DRY_RUN )); then
-        nik_rcon "data get entity $player SelectedItem" >/dev/null || return "$?"
-        result=$(printf '%s\n' "$NIK_RCON_RESPONSE" | python3 "$NIK_ROOT/tools/inventory.py" --damage) || return "$?"
+        result=$(nik_inventory_read "$player" SelectedItem) || return "$?"
         if [[ $result == 0 ]]; then nik_message 1 muted 'Przedmiot nie ma zapisanych uszkodzeń.\n'; return; fi
     fi
     nik_rcon "item modify entity $player weapon.mainhand {type:\"minecraft:set_damage\",damage:1.0,add:false}"
@@ -32,8 +31,7 @@ nik_cmd_ender() {
     nik_args 1 "$@"; nik_player "$1"; local player=$REPLY rows
     command -v python3 >/dev/null || nik_die 'Podgląd Ender Chest wymaga Python 3.'
     if ((NIK_DRY_RUN)); then nik_rcon "data get entity $player EnderItems"; return; fi
-    nik_rcon "data get entity $player EnderItems" >/dev/null || return "$?"
-    rows=$(printf '%s\n' "$NIK_RCON_RESPONSE" | python3 "$NIK_ROOT/tools/inventory.py" --ender) || return "$?"
+    rows=$(nik_inventory_read "$player" EnderItems) || return "$?"
     nik_inventory_table "$1" "$rows" 'SKRZYNIA ENDERA' 'Skrzynia Endera jest pusta.'
 }
 nik_cmd_fireworks() {

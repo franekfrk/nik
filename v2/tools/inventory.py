@@ -104,7 +104,92 @@ def inventory_rows(raw,ender=False):
         rows.append((order,label,name,count,', '.join(details)))
     return [r[1:] for r in sorted(rows)]
 
+class NeedQuery(Exception):
+    def __init__(self,path):self.path=path
+
+class TruncatedSnbt(AssertionError):pass
+
+def response_value(raw):
+    found=re.fullmatch(r'.+ has the following entity data: (.+)',raw.strip())
+    assert found,'Nie rozpoznano odpowiedzi Minecrafta na odczyt plecaka'
+    text=found[1]
+    # Minecraft can replace the rest of a translated component with an ellipsis.
+    # Never accept the prefix as a complete inventory or silently drop its tail.
+    try:return Snbt(text).parse()
+    except AssertionError:
+        if text.endswith('...'):raise TruncatedSnbt('Serwer skrócił odpowiedź ekwipunku') from None
+        raise
+
+def inventory_plan(replies,tag):
+    assert tag in {'Inventory','EnderItems','SelectedItem'},'Nieprawidłowy rodzaj ekwipunku'
+    assert isinstance(replies,dict) and len(replies)<=2500,'Zbyt wiele odczytów ekwipunku'
+    def read(path,optional=False):
+        if path not in replies:raise NeedQuery(path)
+        raw=replies[path]
+        assert isinstance(raw,str),'Błędna odpowiedź odczytu'
+        if optional and raw.strip()=='Found no elements matching '+path:return None
+        return response_value(raw)
+    if tag=='SelectedItem':
+        try:item=read(tag)
+        except TruncatedSnbt:
+            id=read(tag+'.id');damage=read(tag+'.components."minecraft:damage"',True)
+            item={'id':id,'components':{'minecraft:damage':damage if damage is not None else '0'}}
+        assert isinstance(item,dict) and 'id' in item,'Trzymaj przedmiot w głównej ręce'
+        components=item.get('components',{});assert isinstance(components,dict),'Błędne komponenty przedmiotu'
+        damage=integer(components.get('minecraft:damage','0'));assert damage>=0,'Błędne uszkodzenie przedmiotu'
+        return damage
+    try:items=read(tag)
+    except TruncatedSnbt:
+        items=[]
+        enchant_ids=[line.split('\t')[1] for line in (ROOT/'data/enchantment-names.tsv').read_text().splitlines()]
+        for index in range(27 if tag=='EnderItems' else 41):
+            path=f'{tag}[{index}]'
+            try:entry=read(path,True)
+            except TruncatedSnbt:
+                slot=read(path+'.Slot',True)
+                if slot is None:slot=read(path+'.slot')
+                item_path=path
+                id=read(path+'.id',True)
+                if id is None:item_path=path+'.item';id=read(item_path+'.id')
+                count=read(item_path+'.count',True)
+                if count is None:count=read(item_path+'.Count',True)
+                entry={'Slot':slot,'id':id,'count':count if count is not None else '1','components':{}}
+                for component in ('minecraft:enchantments','minecraft:stored_enchantments'):
+                    component_path=item_path+'.components."'+component+'"'
+                    try:values=read(component_path,True)
+                    except TruncatedSnbt:
+                        level_path=component_path+'.levels'
+                        try:legacy=read(level_path,True)
+                        except TruncatedSnbt:legacy=True
+                        if legacy is None:level_path=component_path
+                        values={}
+                        for enchant in enchant_ids:
+                            level=read(level_path+'."minecraft:'+enchant+'"',True)
+                            if level is not None:values['minecraft:'+enchant]=level
+                    if values is not None:entry['components'][component]=values
+            if entry is None:break
+            items.append(entry)
+    # JSON is a strict subset of the SNBT accepted here. Reuse all existing slot,
+    # ID, quantity and enchantment validation before presenting any rows.
+    return inventory_rows('Player has the following entity data: '+json.dumps(items),tag=='EnderItems')
+
+def planner_main(args):
+    if args[0]=='--update':
+        raw=sys.stdin.read();state,response=raw.split('\0',1);replies=json.loads(state)
+        assert len(replies)<2500 and len(response)<=1048576,'Odpowiedź ekwipunku jest zbyt duża'
+        replies[args[1]]=response;print(json.dumps(replies));return
+    if args[0]=='--plan':
+        replies=json.load(sys.stdin)
+        try:rows=inventory_plan(replies,args[1])
+        except NeedQuery as query:print('QUERY\t'+query.path);return
+        print('DONE')
+        if isinstance(rows,int):print(rows);return
+        for label,name,count,detail in rows:print(f'{label}\t{name}\t{count}\t{detail}')
+        return
+    raise AssertionError('Nieprawidłowy tryb odczytu')
+
 def main():
+    if sys.argv[1:2] in (["--plan"],["--update"]):return planner_main(sys.argv[1:])
     raw=sys.stdin.read()
     if sys.argv[1:]==['--damage']:
         found=re.fullmatch(r'.+ has the following entity data: (.+)',raw.strip());assert found,'Nie rozpoznano trzymanego przedmiotu'

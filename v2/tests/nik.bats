@@ -25,6 +25,18 @@ if [[ $MOCK_MODE == rules ]]; then
     else value=$(awk -F '\t' -v k="$key" '$1==k{print $2}' "$MOCK_STATE"); printf 'Game rule %s is currently set to %s\n' "$key" "$value"; fi
     exit 0
 fi
+if [[ $MOCK_MODE == inventory_truncated ]]; then
+    command=${*: -1}; field=${command##* }
+    case $field in
+      Inventory|EnderItems) printf 'PlayerOne has the following entity data: [{Slot: 0b,...\n' ;;
+      'Inventory[0]'|'EnderItems[0]') printf 'PlayerOne has the following entity data: {Slot:0b,id:"minecraft:diamond_sword",count:1,components:{"minecraft:enchantments":{"minecraft:sharpness":5}}}\n' ;;
+      'SelectedItem') printf 'PlayerOne has the following entity data: {components:...\n' ;;
+      'SelectedItem.id') printf 'PlayerOne has the following entity data: "minecraft:diamond_sword"\n' ;;
+      'SelectedItem.components."minecraft:damage"') printf 'PlayerOne has the following entity data: 0\n' ;;
+      *) printf 'Found no elements matching %s\n' "$field" ;;
+    esac
+    exit 0
+fi
 if [[ $MOCK_MODE == inventory ]]; then
     printf '%s\n' 'PlayerOne has the following entity data: [{Slot: 0b, id: "minecraft:diamond_sword", count: 1, components: {"minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:mending": 1}}}, {Slot: 9b, id: "minecraft:torch", count: 64}]'
     exit 0
@@ -77,7 +89,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.6.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.6.1' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -669,7 +681,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.6.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.6.1'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -1268,4 +1280,19 @@ MOCK
 @test 'summon list remains argument checked and count completion is available' {
     run nik przywolaj co 6; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
     run nik __complete przywolaj 3 6; [ "$status" -eq 0 ]; [[ $output == *'64'* ]]
+}
+
+@test 'truncated inventory and ender are read in smaller fields without writes' {
+  export MOCK_MODE=inventory_truncated
+  for command in plecak ender; do
+    run nik "$command" g1
+    [ "$status" -eq 0 ]; [[ $output == *'diamentowy_miecz'* && $output == *'ostrosc: 5'* ]]
+  done
+  ! grep '^exec ' "$MOCK_CALLS" | grep -v 'rcon-cli data get entity PlayerOne '
+}
+@test 'truncated held item reads scalar damage and never repairs an undamaged item' {
+  export MOCK_MODE=inventory_truncated
+  run nik napraw g1
+  [ "$status" -eq 0 ]; [[ $output == *'nie ma zapisanych uszkodzeń'* ]]
+  ! grep -q 'item modify' "$MOCK_CALLS"
 }

@@ -19,7 +19,7 @@ nik_check() {
 nik_response_failed() {
     local command=$1 response=$2 line
     # Entity data is typed payload, even when a player's name is Unknown/Cannot.
-    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ (Pos|Dimension|Rotation|Inventory|EnderItems|SelectedItem)$ && ${response,,} == "${BASH_REMATCH[1],,} has the following entity data: "* ]]; then return 1; fi
+    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ [^[:space:]]+$ && ${response,,} == "${BASH_REMATCH[1],,} has the following entity data: "* ]]; then return 1; fi
     while IFS= read -r line; do
         if [[ ${line,,} =~ $NIK_ERROR_PATTERN ]]; then return 0; fi
     done <<< "$response"
@@ -27,6 +27,7 @@ nik_response_failed() {
 }
 nik_rcon() {
     local command=$1 output plain rc=0 noop=0 silent=0 result=OK
+    local allow_missing=${2:-0}
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
     # Abort before mutation when audit logging is unavailable.
@@ -41,6 +42,9 @@ nik_rcon() {
     # Vanilla may omit an empty Inventory list from serialized entity data.
     if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ (Inventory|EnderItems)$ && $plain == "Found no elements matching ${command##* }" ]]; then
         plain="${BASH_REMATCH[1]} has the following entity data: []"; output=$plain
+    fi
+    if [[ $allow_missing == 1 && $command =~ ^data\ get\ entity\ [.a-zA-Z0-9_]+\ ([^[:space:]]+)$ && $plain == "Found no elements matching ${BASH_REMATCH[1]}" ]]; then
+        noop=1; silent=1
     fi
     if [[ $command == 'effect clear '* ]] && [[ $plain == "Target doesn't have the requested effect" || $plain == 'Target has no effects to remove' ]]; then
         noop=1
@@ -61,5 +65,5 @@ nik_rcon() {
     NIK_RCON_RESPONSE=$plain
     ((noop == 0)) || result=NOOP
     nik_log "$result" "$command" || { nik_message 2 error 'NIK: wykonano komendę, ale zapis wyniku do logu nie powiódł się.\n'; return 1; }
-    if ((silent)); then nik_message 1 success 'Wysłano wiadomość od Taty.\n'; elif ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
+    if ((silent && noop)); then :; elif ((silent)); then nik_message 1 success 'Wysłano wiadomość od Taty.\n'; elif ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
 }

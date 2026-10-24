@@ -244,3 +244,14 @@ certyfikatu, TLS 1.3, logowanie i metadane prywatnej konfiguracji, podglądy
 Testy nie wysłały wiadomości do graczy ani nie przywołały stworzeń.
 Usługa użytkownika jest włączona i ma linger, a Tailscale Serve obsługuje HTTPS.
 Hasła/hash/origins i pozostały prywatny config są wykluczone z publicznego wydania.
+
+## Poprawka 2.6.1 — skracane odpowiedzi ekwipunku
+
+Minecraft może zakończyć tekstową odpowiedź `/data get` wielokropkiem w połowie
+SNBT. `plecak`, `ender` oraz odczyt uszkodzenia w `napraw` pobierają wtedy mniejsze
+pola. Parser nadal odrzuca nieprawidłowe odpowiedzi i sprawdza sloty, ilości,
+identyfikatory oraz poziomy zaklęć. Wszystkie odczyty używają istniejącego transportu,
+limitów czasu i dziennika operacji. Odczyt rozbudowanego plecaka może potrwać dłużej.
+Testy obejmują skrócone listy, przedmioty i mapy zaklęć, puste pola, starszy format,
+uszkodzenie przedmiotu oraz brak modyfikacji ekwipunku. Zestaw: 231 testów Bats,
+89 testów Python. Rzeczywisty plecak i skrzynia Endera sprawdzone bez zmian w grze.
