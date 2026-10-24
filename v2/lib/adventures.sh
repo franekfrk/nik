@@ -12,10 +12,16 @@ nik_creature() {
 }
 nik_cmd_summon() {
     if [[ ${1:-} == co || ${1:-} == lista ]]; then nik_args 1 "$@"; nik_table "$NIK_ROOT/data/creatures.tsv" creatures; return; fi
-    nik_args 2 "$@"; nik_player "$1"; local player=$REPLY creature
+    (($# == 2 || $# == 3)) || nik_die 'Użycie: przywolaj GRACZ STWORZENIE [ILOŚĆ]'
+    nik_player "$1"; local player=$REPLY creature count i
     nik_creature "$2"; creature=$REPLY
+    [[ ${3:-1} =~ ^[0-9]{1,8}$ ]] || nik_die 'Ilość musi być liczbą od 1 do 64.'
+    count=$((10#${3:-1}))
+    ((count >= 1 && count <= 64)) || nik_die 'Ilość musi być liczbą od 1 do 64.'
     if [[ $creature == wither || $creature == ender_dragon ]] && (( !NIK_CONFIRM && !NIK_DRY_RUN )); then nik_die 'Przywołanie bossa wymaga --potwierdz. Najpierw możesz użyć --podglad.'; fi
-    nik_rcon "execute at $player run summon minecraft:$creature ~2 ~ ~"
+    for ((i=0; i<count; i++)); do
+        nik_rcon "execute at $player run summon minecraft:$creature ~2 ~ ~" || return "$?"
+    done
 }
 nik_cmd_point() {
     if [[ ${1:-} == lista ]]; then nik_args 1 "$@"; nik_cmd_place lista; return; fi

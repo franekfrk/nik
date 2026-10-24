@@ -46,7 +46,7 @@ nik_teleport() (
     record=$directory/$player.json
     [[ ! -L $record && ! -L $directory/$player.lock ]] || nik_die 'Punkt powrotu lub blokada jest dowiązaniem.'
     exec 8> "$directory/$player.lock"
-    flock -x 8 || return "$?"
+    nik_lock 8 || return "$?"
     # Prepare a validated record on the same filesystem before teleporting.
     pending=$(mktemp "$directory/.pending.XXXXXX") || return "$?"
     trap 'if (( !moved )); then rm -f -- "$pending"; fi' EXIT
@@ -63,7 +63,7 @@ nik_cmd_back() (
     [[ -f $record ]] || nik_die 'Brak punktu powrotu. Najpierw teleportuj gracza przez NIK.'
     if (( !NIK_DRY_RUN )); then
         umask 077
-        exec 8> "$directory/$player.lock"; flock -x 8 || return "$?"
+        exec 8> "$directory/$player.lock" || return "$?"; nik_lock 8 || return "$?"
     fi
     fields=$(python3 "$NIK_ROOT/tools/location.py" read "$record" "$player" "$NIK_CONTAINER") || return "$?"
     IFS=$'\t' read -r x y z dimension yaw pitch <<< "$fields"

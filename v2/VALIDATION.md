@@ -1,6 +1,6 @@
 # NIK v2 — audyt i weryfikacja, 2026-10-24
 
-Wynik kontroli kodu lokalnie i na serwerze: **213/213 testy Bats**, `bash -n`, ShellCheck 0.11.0,
+Wynik kontroli kodu lokalnie i na serwerze: **229/229 testy Bats**, `bash -n`, ShellCheck 0.11.0,
 `py_compile` narzędzi Python i audyt całego katalogu danych.
 
 ## Znalezione i poprawione problemy
@@ -196,3 +196,29 @@ nie dał im nagród i nie zmienił świata. Test parsera nie potwierdza wyglądu
 na ekranie klienta Bedrock/Java; geometria prowadzenia ma osobne testy jednostkowe.
 Przed wdrożeniem zachowywana jest kopia zmienianych plików, prywatny config
 pozostaje na miejscu, a po wdrożeniu sprawdzany jest nik status.
+
+## Stabilizacja 2.5.1
+
+Zestaw rozszerzono do 229 testów Bats i 58 testów Python. Testy regresji obejmują:
+nieobsłużony błąd w podstawieniu komendy, zachowanie opcji/shopt/pułapek powłoki
+po source, walidację metadanych i aliasów rejestru, nicki Unknown/Cannot,
+prywatne uprawnienia logu/blokady, dowiązanie blokady, błąd zegara audytu,
+separatory w logu, limit oczekiwania na blokadę oraz proces Docker ignorujący TERM.
+
+Siedem testów pakowania używa rzeczywistych archiwów ZIP i sztucznych sekretów.
+Sprawdzają rozdzielenie configu, wykluczenie przypadkowego pliku spoza manifestu,
+prywatne katalogi, ścieżki ../ i absolutne, duplikaty, dowiązania katalogów,
+brak pliku wydania oraz zachowanie poprzedniego archiwum po błędzie.
+Kontrola Git wykrywa śledzony plik prywatny i nowy plik poza manifestem.
+Fixture testów kopiuje wyłącznie pliki z manifestu, nigdy katalog instalacji
+z rzeczywistymi ustawieniami, logami lub kopiami świata.
+
+Testy nie dowodzą braku wszystkich możliwych sekretów w kodzie. CI kontroluje
+jawne granice wydania; przed publiczną publikacją wykonywany jest również audyt
+wartości z rzeczywistej konfiguracji. Ochrona gałęzi GitHub wymaga osobnego
+ustawienia po stronie właściciela repozytorium.
+
+Dodatkowo pięć testów potwierdza opcjonalną ilość przywoływanych stworzeń:
+brak ilości oznacza jedno, liczba jest wykonywana dokładnie (w tym wiodące zera),
+błędna ilość nie wywołuje gry, bossy zachowują potwierdzenie, błąd zatrzymuje
+sekwencję, a lista i Tab zachowują poprawne argumenty.

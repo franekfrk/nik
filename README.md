@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.5.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.5.1**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -38,6 +38,21 @@ Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
 z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
 pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
 Niestandardowe datapacki mogą wymagać osobnych zmian.
+
+## Stabilizacja 2.5.1
+
+Ujednolicono obsługę błędów także w podstawieniach komend Bash, ograniczono
+oczekiwanie na blokady oraz wymuszono zakończenie procesu transportu ignorującego
+TERM. Parser, pomoc i rejestr komend mają osobne moduły. Log i jego blokada są
+prywatne, a paczki powstają z jawnego manifestu plików i mają testy prywatności.
+CI kontroluje dodatkowo śledzone prywatne ścieżki i kompletność manifestu.
+
+Przywoływanie obsługuje opcjonalną ilość: `przywolaj g1 krowa` daje jedną,
+`przywolaj g1 krowa 12` daje dwanaście (zakres 1–64). Błąd przerywa sekwencję;
+wcześniej przywołane stworzenia pozostają. Bossy wymagają potwierdzenia.
+
+Zasady utrzymania: [architektura](v2/ARCHITECTURE.md) i
+[prywatność oraz bezpieczeństwo](v2/SECURITY.md).
 
 ## Nowe w 2.5 — kolorowe menu i zabawa
 

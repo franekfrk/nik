@@ -11,4 +11,5 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y shellcheck bats
+      - run: python3 tools/audit-project.py --git
       - run: bash tests/check.sh

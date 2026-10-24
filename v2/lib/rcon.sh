@@ -3,7 +3,7 @@ nik_docker() {
     local output rc=0
     command -v docker >/dev/null || nik_die 'Brak Dockera.'
     command -v timeout >/dev/null || nik_die 'Brak timeout (GNU coreutils).'
-    output=$(timeout --foreground "${NIK_TIMEOUT}s" docker "$@" 2>&1) || rc=$?
+    output=$(timeout --foreground --kill-after=2s "${NIK_TIMEOUT}s" docker "$@" 2>&1) || rc=$?
     if ((rc)); then
         if ((rc == 124)); then nik_message 2 error 'NIK: przekroczono limit czasu Docker/RCON.\n'
         else nik_message 2 error 'NIK: Docker/RCON zakończony błędem %s.\n%s\n' "$rc" "$output"; fi
@@ -17,10 +17,12 @@ nik_check() {
     [[ $state == true ]] || { nik_message 2 error 'NIK: kontener nie działa.\n'; return 1; }
 }
 nik_response_failed() {
-    local line
+    local command=$1 response=$2 line
+    # Entity data is typed payload, even when a player's name is Unknown/Cannot.
+    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ (Pos|Dimension|Rotation|Inventory|EnderItems|SelectedItem)$ && ${response,,} == "${BASH_REMATCH[1],,} has the following entity data: "* ]]; then return 1; fi
     while IFS= read -r line; do
         if [[ ${line,,} =~ $NIK_ERROR_PATTERN ]]; then return 0; fi
-    done <<< "$1"
+    done <<< "$response"
     return 1
 }
 nik_rcon() {
@@ -49,7 +51,7 @@ nik_rcon() {
     # is empty; parse/target errors are still detected and transport must pass.
     if [[ $command == 'tellraw '* && -z ${plain//[[:space:]]/} ]]; then silent=1; fi
     if ((rc == 0 && !noop)); then
-        if { [[ -z ${plain//[[:space:]]/} ]] && (( !silent )); } || nik_response_failed "$plain"; then rc=1; fi
+        if { [[ -z ${plain//[[:space:]]/} ]] && (( !silent )); } || nik_response_failed "$command" "$plain"; then rc=1; fi
     fi
     if ((rc)); then
         nik_log ERROR "$command" || true

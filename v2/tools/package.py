@@ -2,7 +2,6 @@
 """Package a public tree plus an optional private config, never the whole repo."""
 import argparse
 import hashlib
-import fnmatch
 import os
 import tempfile
 from pathlib import Path
@@ -15,20 +14,12 @@ parser.add_argument('--private-config', type=Path)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 args.out.mkdir(parents=True, exist_ok=True)
-allowed = {'nik.sh', 'lib', 'data', 'config.example', 'config', 'tests', 'tools',
-           'extensions', '.github', '.gitignore', '.shellcheckrc', 'README.md', 'VALIDATION.md'}
-files = []
-for file in sorted(root.rglob('*')):
-    if not file.is_file() or file.is_symlink():
-        continue
-    relative = file.relative_to(root)
-    if relative.parts[0] not in allowed or any(part in {'__pycache__','.git','.aws','.codex','.agents'} for part in relative.parts):
-        continue
-    if any(fnmatch.fnmatch(file.name, pattern) for pattern in ['.env', '.env.*', '*.log', '*.pem', '*.key', 'id_rsa*', 'id_ed25519*', 'nik.local.sh', 'nik-oryginal.sh']):
-        continue
-    if relative.parts[0] == 'config' and str(relative) != 'config/.gitkeep':
-        continue
-    files.append((file, relative))
+# An incidental file placed in lib/data/tools cannot enter a public release.
+from release_manifest import public_files
+try:
+    files = public_files(root)
+except (AssertionError,ValueError,OSError) as error:
+    raise SystemExit('NIK: '+str(error)) from error
 
 def archive(name, private=False):
     target = args.out / f'nik-v2-{name}.zip'

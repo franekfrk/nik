@@ -77,7 +77,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.5.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.5.1' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -496,7 +496,8 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
 }
 @test 'public packaging excludes keys nested in allowed source folders' {
   mkdir -p "$WORK/pkg/tools" "$WORK/pkg/lib" "$WORK/pkg/config" "$WORK/pkg/config.example"
-  cp "$ROOT/tools/package.py" "$WORK/pkg/tools/"
+  cp "$ROOT/tools/package.py" "$ROOT/tools/release_manifest.py" "$WORK/pkg/tools/"
+  printf '%s\n' '["tools/package.py","tools/release_manifest.py","tools/public-files.json","lib/module.sh","config/.gitkeep"]' > "$WORK/pkg/tools/public-files.json"
   printf public > "$WORK/pkg/lib/module.sh"
   printf private > "$WORK/pkg/lib/secret.key"
   printf private > "$WORK/pkg/config/players.tsv"
@@ -668,7 +669,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.5.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.5.1'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -1166,4 +1167,105 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
     run nik odliczanie g1 1 'Start ♥'; [ "$status" -eq 0 ]
     [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 5 ]
     grep '^exec ' "$MOCK_CALLS" | tail -1 | grep -q 'Start ♥'
+}
+@test 'strict mode includes inheritance inside command substitutions' {
+    mkdir "$WORK/extensions"
+    cat > "$WORK/extensions/probe.sh" <<'EXT'
+probe_handler() { local value; value=$(false; printf 'MASKED FAILURE'); printf '%s' "$value"; }
+nik_register probe probe_handler 0 probe 'Probe strict mode'
+EXT
+    run nik --rozszerzenia "$WORK/extensions" probe
+    [ "$status" -eq 1 ]; [[ $output != *'MASKED FAILURE'* ]]
+}
+@test 'source preserves shopt options traps and caller flags' {
+    run bash -c 'set +e; shopt -u inherit_errexit; trap "true" ERR; before=$(set +o); shopts=$(shopt -p); traps=$(trap -p); source "$1"; [[ $(set +o) == "$before" && $(shopt -p) == "$shopts" && $(trap -p) == "$traps" ]]' _ "$ROOT/nik.sh"
+    [ "$status" -eq 0 ]
+}
+@test 'registry rejects invalid flags and malformed usage before config or Docker' {
+    mkdir "$WORK/extensions"
+    printf 'nik_register broken nik_cmd_give garbage "broken GRACZ" "Opis"\n' > "$WORK/extensions/broken.sh"
+    run nik --rozszerzenia "$WORK/extensions" commands; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    printf 'nik_register broken nik_cmd_give 0 "other GRACZ" "Opis"\n' > "$WORK/extensions/broken.sh"
+    run nik --rozszerzenia "$WORK/extensions" help; [ "$status" -eq 2 ]
+}
+@test 'registry revalidates metadata after trusted extensions' {
+    mkdir "$WORK/extensions"
+    printf 'NIK_DESTRUCTIVE[daj]=invalid\n' > "$WORK/extensions/broken.sh"
+    run nik --rozszerzenia "$WORK/extensions" commands; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'all shell command shortcuts dispatch through registered commands' {
+    run bash -c 'source "$1"; declare -A commands=(); count=0; while read -r command; do commands[$command]=1; done < <(nik polecenia); while read -r _ definition; do body=${definition#*=}; body=${body:1:-1}; case $body in "nik "*) target=${body#nik }; target=${target%% *}; [[ -v commands[$target] ]] || exit 1; count=$((count+1));; esac; done < <(alias); ((count>=40))' _ "$ROOT/nik.sh"
+    [ "$status" -eq 0 ]
+}
+@test 'typed data for players named Unknown and Cannot are not game errors' {
+    printf 'unknown\tu\tunknown\ncannot\tc\tcannot\n' >> "$NIK_CONFIG/players.tsv"
+    export MOCK_MODE=response
+    export MOCK_RESPONSE='Unknown has the following entity data: []'
+    run nik plecak u; [ "$status" -eq 0 ]; [[ $output == *'puste'* ]]
+    export MOCK_RESPONSE='Cannot has the following entity data: []'
+    run nik ender c; [ "$status" -eq 0 ]; [[ $output == *'pusta'* ]]
+}
+@test 'audit log and lock are private before mutation' {
+    run nik zapisz; [ "$status" -eq 0 ]
+    [ "$(stat -c %a "$WORK/log/nik.log")" = 600 ]; [ "$(stat -c %a "$WORK/log/nik.log.lock")" = 600 ]
+}
+@test 'audit symlink is rejected without truncating target or calling Docker' {
+    mkdir "$WORK/log"; printf 'must stay intact' > "$WORK/target"
+    ln -s "$WORK/target" "$WORK/log/nik.log.lock"
+    run nik zapisz; [ "$status" -ne 0 ]; [ "$(cat "$WORK/target")" = 'must stay intact' ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'busy data lock times out without changing saved places' {
+    printf 'TIMEOUT=1\n' >> "$NIK_CONFIG/config.env"
+    cp "$NIK_CONFIG/places.tsv" "$WORK/before"
+    exec 7> "$NIK_CONFIG/places.lock"; flock -x 7
+    run nik miejsce dodaj baza 1 64 2 minecraft:overworld
+    [ "$status" -eq 75 ]; cmp "$WORK/before" "$NIK_CONFIG/places.tsv"
+    flock -u 7; exec 7>&-
+}
+@test 'Docker ignoring TERM is forcibly bounded' {
+    printf 'TIMEOUT=1\n' >> "$NIK_CONFIG/config.env"
+    cat > "$WORK/bin/docker" <<'MOCK'
+#!/usr/bin/env bash
+trap '' TERM
+while :; do sleep 0.1; done
+MOCK
+    chmod +x "$WORK/bin/docker"
+    local started=$SECONDS
+    run nik zapisz
+    [ "$status" -eq 137 ]; ((SECONDS-started < 7))
+}
+@test 'failed audit timestamp stops before Docker and log text cannot forge rows' {
+    cat > "$WORK/bin/date" <<'MOCK'
+#!/usr/bin/env bash
+exit 9
+MOCK
+    chmod +x "$WORK/bin/date"
+    run nik zapisz; [ "$status" -ne 0 ]; [ ! -e "$MOCK_CALLS" ]
+    rm "$WORK/bin/date"
+    run bash -c 'source "$1/lib/helpers.sh"; NIK_LOG=$2; NIK_TIMEOUT=1; nik_log START $'"'"'first\nforged\tfield\r'"'"'' _ "$ROOT" "$WORK/escaped.log"
+    [ "$status" -eq 0 ]; [ "$(wc -l < "$WORK/escaped.log")" -eq 1 ]
+}
+@test 'summon default remains one and explicit six emits six commands' {
+    run nik przywolaj g1 krowa --podglad; [ "$status" -eq 0 ]
+    [ "$(printf '%s\n' "$output" | grep -c 'run summon minecraft:cow')" -eq 1 ]
+    run nik przywolaj g1 krowa 6 --podglad; [ "$status" -eq 0 ]
+    [ "$(printf '%s\n' "$output" | grep -c 'run summon minecraft:cow')" -eq 6 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'invalid summon counts including literal x cause no game operation' {
+    for count in x 0 65 -1 1.5 999999999999999999999 '6 run kill @a'; do
+        run nik przywolaj g1 krowa "$count"; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    done
+}
+@test 'summon count accepts leading zeros and does not bypass boss confirmation' {
+    run nik przywolaj g1 cow 006 --podglad; [ "$status" -eq 0 ]; [ "$(printf '%s\n' "$output" | grep -c 'run summon minecraft:cow')" -eq 6 ]
+    run nik przywolaj g1 wither 2; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    run nik przywolaj g1 wither 2 --potwierdz; [ "$status" -eq 0 ]; [ "$(grep -c 'run summon minecraft:wither' "$MOCK_CALLS")" -eq 2 ]
+}
+@test 'summon sequence stops immediately when game rejects the command' {
+    export MOCK_MODE=semantic
+    run nik przywolaj g1 krowa 6; [ "$status" -ne 0 ]; [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'summon list remains argument checked and count completion is available' {
+    run nik przywolaj co 6; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    run nik __complete przywolaj 3 6; [ "$status" -eq 0 ]; [[ $output == *'64'* ]]
 }

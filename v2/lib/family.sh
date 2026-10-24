@@ -65,7 +65,7 @@ nik_cmd_quest() (
     if (( !NIK_DRY_RUN )); then
         nik_family_dir quests "$NIK_CONFIG" || return "$?"; directory=$REPLY
         [[ ! -L $directory/$player.lock ]] || nik_die 'Blokada zadania jest dowiązaniem.'
-        exec 8> "$directory/$player.lock"; flock -x 8 || return "$?"
+        exec 8> "$directory/$player.lock" || return "$?"; nik_lock 8 || return "$?"
     fi
     if [[ $action == nowe ]]; then
         if [[ -f $file ]]; then
@@ -119,7 +119,7 @@ nik_cmd_protection() (
     fi
     nik_family_dir protection "$NIK_STATE" || return "$?"; directory=$REPLY
     [[ ! -L $directory/$NIK_CONTAINER.lock ]] || nik_die 'Blokada ochrony jest dowiązaniem.'
-    exec 8> "$directory/$NIK_CONTAINER.lock"; flock -x 8 || return "$?"
+    exec 8> "$directory/$NIK_CONTAINER.lock" || return "$?"; nik_lock 8 || return "$?"
     if [[ $action == wylacz ]]; then
         fields=$(python3 "$NIK_ROOT/tools/family-state.py" rules-read "$file" "$NIK_CONTAINER") || return "$?"
         while IFS=$'\t' read -r key value; do target[$key]=$value; done <<< "$fields"
@@ -165,7 +165,7 @@ nik_cmd_point_delete() (
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] usunięcie punktu %s\n' "$name"; return; fi
     [[ ! -L $NIK_CONFIG/places.tsv && ! -L $NIK_CONFIG/places.lock ]] || nik_die 'Plik miejsc lub blokada jest dowiązaniem.'
     umask 077
-    exec 9> "$NIK_CONFIG/places.lock"; flock -x 9 || return "$?"
+    exec 9> "$NIK_CONFIG/places.lock"; nik_lock 9 || return "$?"
     pending=$(mktemp "$NIK_CONFIG/.places.XXXXXX"); trap 'rm -f -- "$pending"' EXIT
     awk -F '\t' -v name="$name" '$1 != name' "$NIK_CONFIG/places.tsv" > "$pending" || return "$?"
     mv -f -- "$pending" "$NIK_CONFIG/places.tsv" || return "$?"

@@ -7,6 +7,23 @@ NIK to modułowy interfejs Bash do Minecraft Java w Dockerze. Możesz pisać
 Pomoc, listy i komunikaty używają minecraftowych kolorów; baner i pomoc mają
 tęczowy podpis. Tryb `--podglad` pokazuje plan bez wykonywania komend.
 
+`przywolaj GRACZ STWORZENIE [ILOŚĆ]` przyjmuje opcjonalnie 1–64 sztuki.
+Bez ilości przywołuje dokładnie jedno stworzenie. `x`, 0 i przekroczony limit
+są błędem przed pierwszym poleceniem gry. Przykład: `przywolaj g1 krowa 6`.
+Wszystkie stworzenia pojawiają się 2 bloki obok aktualnej pozycji gracza;
+NIK nie sprawdza wolnego miejsca. Przy błędzie w połowie wcześniej przywołane
+stworzenia pozostają, a dalsze polecenia nie są wykonywane. Bossy nadal
+wymagają potwierdzenia; dotyczy ono całej podanej liczby.
+
+## Stabilizacja 2.5.1
+
+Wspólny strict mode obejmuje także podstawienia `$(...)` przez `inherit_errexit`.
+Transport ma wymuszone zakończenie procesu ignorującego TERM, a blokady danych
+mają limit oczekiwania. Rejestr, parser i pomoc są osobnymi modułami.
+Jawny manifest paczki i testy prywatności chronią przed przypadkowym dołączeniem
+prywatnych plików. Szczegóły: [architektura](ARCHITECTURE.md) i
+[polityka prywatności i bezpieczeństwa](SECURITY.md).
+
 ## Nowe w 2.5 — menu i wspólna zabawa
 
 ```bash

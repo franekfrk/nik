@@ -1,40 +1,5 @@
 # shellcheck shell=bash
 # Registry: name, handler, mutation/confirmation flag, usage, description.
-declare -A NIK_HANDLERS=() NIK_DESTRUCTIVE=() NIK_USAGE=() NIK_DESCRIPTIONS=()
-nik_register() {
-    nik_id "$1"
-    [[ ! -v NIK_HANDLERS[$1] ]] || nik_die "Powtórzona komenda: $1"
-    declare -F "$2" >/dev/null || nik_die "Brak funkcji obsługi: $2"
-    NIK_HANDLERS[$1]=$2; NIK_DESTRUCTIVE[$1]=$3; NIK_USAGE[$1]=$4; NIK_DESCRIPTIONS[$1]=$5
-}
-nik_help() {
-    local name=${1:-} cmd group
-    local -a groups=('PRZEDMIOTY I EKWIPUNEK' 'PODRÓŻE I RATUNEK' 'GRACZE I EFEKTY' 'OD TATY DLA FRANKA' 'ŚWIAT I STWORZENIA' 'SŁOWNIKI I WYSZUKIWANIE' 'SERWER I POZOSTAŁE')
-    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.5'
-    if [[ -n $name ]]; then
-        [[ -v NIK_USAGE[$name] ]] || nik_die "Nieznana komenda: $name"
-        nik_section 'JAK UŻYWAĆ'
-        nik_ui_text "nik ${NIK_USAGE[$name]}" command
-        nik_ui_text "${NIK_DESCRIPTIONS[$name]}"
-    else
-        nik_ui_text 'Wybierz komendę. Tab podpowiada nazwy, graczy i przedmioty.' muted
-        for group in "${groups[@]}"; do
-            nik_section "$group"
-            while IFS= read -r cmd; do
-                nik_help_group "$cmd"
-                [[ $REPLY != "$group" ]] || nik_help_row "$cmd" "${NIK_DESCRIPTIONS[$cmd]}"
-            done < <(printf '%s\n' "${!NIK_HANDLERS[@]}" | sort)
-        done
-    fi
-    nik_section 'OPCJE'
-    nik_help_row --podglad 'Pokaż plan bez wykonywania zmian.'
-    nik_help_row --potwierdz 'Potwierdź operację wymagającą zgody.'
-    nik_help_row --konfiguracja 'KATALOG — wybierz własną konfigurację.'
-    nik_help_row --pomoc 'Pomoc ogólna lub dla wybranej komendy.'
-    nik_help_row --wersja 'Pokaż wersję NIK.'
-    nik_help_row --rozszerzenia 'KATALOG — wczytaj własne moduły.'
-    nik_signature
-}
 # shellcheck disable=SC2153
 nik_cmd_players() {
     nik_args 0 "$@"
@@ -99,7 +64,7 @@ nik_cmd_place() {
             if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] zapis miejsca %s\n' "$2"
             else (
                 umask 077
-                flock -x 9
+                nik_lock 9 || return "$?"
                 if awk -F '\t' -v name="$2" '$1 == name {found=1} END {exit !found}' "$NIK_CONFIG/places.tsv"; then nik_die 'Miejsce już istnieje.'; fi
                 printf '%s\t%s\t%s\t%s\t%s\n' "$2" "$3" "$4" "$5" "$6" >> "$NIK_CONFIG/places.tsv"
             ) 9> "$NIK_CONFIG/places.lock"; fi ;;
@@ -215,147 +180,8 @@ nik_cmd_rotate() (
     cutoff=$(date -u -d "-$NIK_LOG_DAYS days" +%FT%TZ)
     umask 077
     exec 9> "${NIK_LOG}.lock"
-    flock -x 9
+    nik_lock 9 || return "$?"
     tmp=$(mktemp "${NIK_LOG}.XXXXXX")
     # Lock shared with all writers; rename cannot lose concurrent log entries.
     if awk -v cutoff="$cutoff" '$1 >= cutoff' "$NIK_LOG" > "$tmp" && mv -- "$tmp" "$NIK_LOG"; then return 0; else rm -f -- "$tmp"; return 1; fi
 )
-nik_registry() {
-    nik_register prowadz nik_cmd_guide 0 'prowadz GRACZ MIEJSCE [CZAS]' 'Kierunek i odległość w grze co 2 s; domyślnie 60 s, Ctrl+C kończy.'
-    nik_register odliczanie nik_cmd_countdown 0 'odliczanie GRACZ SEKUNDY [TEKST]' 'Kolorowe odliczanie 1–60 sekund i duży napis na koniec.'
-    nik_register losuj nik_cmd_random 0 'losuj GRACZ' 'Wylosuj zadanie z własnej listy i daj książkę od Taty.'
-    nik_register nagroda nik_cmd_reward 0 'nagroda GRACZ NAZWA | lista' 'Daj zestaw nagród i wyświetl gratulacje od Taty.'
-    nik_register przepis nik_cmd_recipe 0 'przepis PRZEDMIOT' 'Składniki i układ wytwarzania z oficjalnych receptur 26.3.'
-    nik_register menu nik_cmd_menu 0 'menu' 'Kolorowe menu: wybierz gracza, kategorię i czynność.'
-    nik_register ratunek nik_cmd_rescue 0 'ratunek GRACZ [MIEJSCE]' 'Ratunek do domu lub punktu: ochrona przed ogniem, odmrożenie i leczenie.'
-    nik_register napraw nik_cmd_repair 0 'napraw GRACZ' 'Napraw trzymany przedmiot z zachowaniem jego danych.'
-    nik_register ender nik_cmd_ender 0 'ender GRACZ' 'Podgląd skrzyni Endera wskazanego gracza.'
-    nik_register fajerwerki nik_cmd_fireworks 0 'fajerwerki GRACZ' 'Kolorowy pokaz cząsteczek i dźwięku bez obrażeń.'
-    nik_register zadanie nik_cmd_quest 0 'zadanie GRACZ [TREŚĆ | pokaz | ksiazka | gotowe | usun]' 'Zadanie od Taty w prywatnej książce, do odczytu w grze.'
-    nik_register ochrona nik_cmd_protection 0 'ochrona [status | budowanie | wylacz]' 'Profil reguł świata; zmiany wymagają --potwierdz.'
-
-    nik_register punkt nik_cmd_point 0 'punkt GRACZ NAZWA | lista | usun NAZWA' 'Zapisz aktualną pozycję gracza jako nazwane miejsce.'
-    nik_register plecak nik_cmd_inventory 0 'plecak GRACZ' 'Czytelny podgląd przedmiotów i zaklęć w plecaku.'
-    nik_register napis nik_cmd_title 0 'napis GRACZ TREŚĆ...' 'Duży złoty tytuł z podpisem Od Taty ♥.'
-    nik_register przywolaj nik_cmd_summon 0 'przywolaj GRACZ STWORZENIE | co' 'Przywołaj jedno stworzenie 2 bloki obok gracza; boss wymaga --potwierdz.'
-
-    nik_register gdzie nik_cmd_where 0 'gdzie GRACZ' 'Pokaż pozycję, wymiar i kierunek gracza online.'
-    nik_register powrot nik_cmd_back 0 'powrot GRACZ' 'Wróć do pozycji sprzed ostatniej udanej teleportacji NIK.'
-    nik_register tata nik_cmd_dad 0 'tata GRACZ TREŚĆ...' 'Prywatna, kolorowa wiadomość od Taty w czacie gry.'
-    nik_register wiadomosc nik_cmd_dad 0 'wiadomosc GRACZ TREŚĆ...' 'Wiadomość od Taty; odpowiednik tata.'
-
-    nik_register zaklnij nik_cmd_enchant_hand 0 'zaklnij GRACZ ZAKLĘCIE[:POZIOM]...' 'Zaklnij przedmiot w głównej ręce; nie daje nowego.'
-    nik_register kreatywny nik_cmd_creative 0 'kreatywny GRACZ' 'Tryb kreatywny wskazanego gracza, w tym samym świecie.'
-    nik_register przetrwanie nik_cmd_survival 0 'przetrwanie GRACZ' 'Tryb przetrwania wskazanego gracza.'
-    nik_register obserwator nik_cmd_spectator 0 'obserwator GRACZ' 'Tryb obserwatora wskazanego gracza.'
-    nik_register przygodowy nik_cmd_adventure 0 'przygodowy GRACZ' 'Tryb przygodowy wskazanego gracza.'
-    nik_register zestaw nik_cmd_favorite 0 'zestaw lista | pokaz NAZWA | zapisz NAZWA ITEM[=ILOŚĆ]... | GRACZ NAZWA' 'Zapisuj i dawaj ulubione zestawy; zachowuje rzeczy w ekwipunku.'
-    nik_register kopia nik_cmd_backup 0 'kopia [utworz|lista]' 'Archiwum świata; krótko zatrzymuje i uruchamia serwer.'
-    nik_register przywroc nik_cmd_restore 1 'przywroc ID_KOPII' 'Przywróć świat po kopii bieżącego; wymaga --potwierdz, rozłącza graczy.'
-
-    nik_register daj nik_cmd_give 0 'daj GRACZ ITEM [ILOŚĆ]' 'Daj przedmiot (1–2304 szt.).'
-    nik_register encik nik_cmd_enchant 0 'encik GRACZ ITEM ZAKLĘCIE[:POZIOM]... | co' 'Daj nowy zaklęty przedmiot; zaklęcia po polsku lub angielsku.'
-    nik_register wyposaz nik_cmd_equip 1 'wyposaz GRACZ [ZESTAW]' 'Nadpisz wskazane sloty zestawu; wymaga --potwierdz.'
-    nik_register tp nik_cmd_tp 0 'tp GRACZ CEL | GRACZ X Y Z' 'Teleport do miejsca, gracza lub współrzędnych.'
-    nik_register dom nik_cmd_home 0 'dom GRACZ' 'Teleport do domu.'
-    nik_register zamek nik_cmd_castle 0 'zamek GRACZ' 'Teleport do zamku.'
-    nik_register dolacz nik_cmd_join 0 'dolacz GRACZ GRACZ' 'Teleport do drugiego gracza.'
-    nik_register miejsce nik_cmd_place 0 'miejsce lista | dodaj NAZWA X Y Z WYMIAR' 'Lista i zapis miejsc.'
-    nik_register efekt nik_cmd_effect 0 'efekt GRACZ EFEKT [CZAS] [POZIOM] | co' 'Dodaj efekt (domyślnie 30 s, poziom I).'
-    nik_register usun nik_cmd_remove 0 'usun GRACZ EFEKT' 'Usuń jeden efekt.'
-    nik_register wyczysc nik_cmd_clear 1 'wyczysc GRACZ' 'Usuń wszystkie efekty; wymaga --potwierdz.'
-    nik_register zdrowie nik_cmd_health 0 'zdrowie GRACZ' 'Ulecz i nasyć gracza.'
-    nik_register zamroz nik_cmd_freeze 0 'zamroz GRACZ' 'Zablokuj chodzenie i zwykłe skoki do odmroz.'
-    nik_register odmroz nik_cmd_thaw 0 'odmroz GRACZ' 'Usuń blokadę NIK i stare efekty zamrażania.'
-    nik_register kick nik_cmd_kick 1 'kick GRACZ [POWÓD...]' 'Wyrzuć gracza; wymaga --potwierdz.'
-    nik_register grzmot nik_cmd_lightning 1 'grzmot GRACZ' 'Przywołaj piorun; wymaga --potwierdz.'
-    nik_register wybuch nik_cmd_explosion 1 'wybuch GRACZ' 'Przywołaj wybuch; wymaga --potwierdz.'
-    nik_register restartmc nik_cmd_restart 1 'restartmc' 'Restart kontenera; wymaga --potwierdz.'
-    nik_register zapisz nik_cmd_save 0 'zapisz' 'Zapisz świat.'
-    nik_register dzien nik_cmd_day 0 'dzien' 'Ustaw dzień i czystą pogodę.'
-    nik_register noc nik_cmd_night 0 'noc' 'Ustaw noc.'
-    nik_register pogoda nik_cmd_weather 0 'pogoda slonce|deszcz|burza [CZAS]' 'Zmień pogodę, opcjonalnie na 30s, 10m, 1h.'
-    nik_register burza nik_cmd_storm 0 'burza' 'Rozpocznij burzę.'
-    nik_register online nik_cmd_online 0 'online' 'Pokaż graczy online.'
-    nik_register status nik_cmd_status 0 'status' 'Sprawdź konfigurację, kontener i RCON.'
-    nik_register diagnoza nik_cmd_status 0 'diagnoza' 'Diagnostyka połączenia i konfiguracji.'
-    nik_register gracze nik_cmd_players 0 'gracze' 'Lista skonfigurowanych graczy.'
-    nik_register gracz_lista nik_cmd_players 0 'gracz_lista' 'Lista skonfigurowanych graczy (zgodność v1).'
-    nik_register przedmioty nik_cmd_items 0 'przedmioty' 'Słownik PL → EN.'
-    nik_register szukaj nik_cmd_search 0 'szukaj FRAZA' 'Szukaj przedmiotów po PL/EN.'
-    nik_register log_rotacja nik_cmd_rotate 1 'log_rotacja' 'Usuń stare wpisy logu; wymaga --potwierdz.'
-}
-nik_completion_candidates() {
-    local command=${1:-} position=${2:-1} current=${3:-} word
-    nik_normalize_name "$current"; current=$REPLY
-    local -a words=()
-    nik_settings
-    if [[ $position == 1 ]]; then
-        case $command in
-            przepis|szukaj) nik_item_candidates "$current"; return ;;
-            nagroda) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
-            pogoda) words=(slonce czysto deszcz burza) ;;
-            ochrona) words=(status budowanie wylacz) ;;
-            punkt) words=(lista usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
-            kopia) words=(utworz lista) ;;
-            przywroc) for word in "$NIK_ROOT"/world-backups/*.json; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.json}"); done ;;
-            zestaw) words=(lista pokaz zapisz "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
-            przywolaj) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" co lista) ;;
-            efekt|encik) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" co lista) ;;
-            *) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
-        esac
-    elif [[ $position == 2 ]]; then
-        case $command in
-            nagroda) while IFS= read -r word; do words+=("$word"); done < <(nik_reward_names) ;;
-            prowadz|ratunek) words=("${!NIK_PLACES[@]}") ;;
-            punkt) words=("${!NIK_PLACES[@]}") ;;
-            zadanie) words=(pokaz ksiazka gotowe usun) ;;
-            przywolaj) words=("${!NIK_CREATURES[@]}" "${!NIK_CREATURE_IDS[@]}" "${!NIK_CREATURE_ALIASES[@]}") ;;
-            zaklnij) words=("${!NIK_ENCHANT_NAMES[@]}" "${!NIK_ENCHANT_MAX[@]}") ;;
-            daj|encik) nik_item_candidates "$current"; return ;;
-            efekt|usun) words=("${!NIK_EFFECTS[@]}") ;;
-            tp|dolacz) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" "${!NIK_PLACES[@]}") ;;
-            zestaw) for word in "$NIK_CONFIG"/favorites/*.tsv; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.tsv}"); done ;;
-            wyposaz) for word in "$NIK_CONFIG"/sets/*.tsv; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.tsv}"); done ;;
-        esac
-    elif [[ $command == zaklnij || $command == encik ]]; then words=("${!NIK_ENCHANT_NAMES[@]}" "${!NIK_ENCHANT_MAX[@]}"); fi
-    for word in "${words[@]}"; do if [[ $word == *"$current"* ]]; then printf '%s\n' "$word"; fi; done | LC_ALL=C sort -u
-}
-nik_main() {
-    nik_registry
-    local -a args=()
-    local help=0 options=1 argument command extension_dir='' extension
-    while (($#)); do
-        argument=$1; shift
-        if ((options)); then
-            case $argument in
-                --) options=0; continue ;;
-                --konfiguracja|--config) (($#)) || nik_die 'Brak katalogu po --konfiguracja.'; NIK_CONFIG=$1; shift; continue ;;
-                --rozszerzenia|--extensions) (($#)) || nik_die "Brak katalogu rozszerzeń."; extension_dir=$1; shift; continue ;;
-                --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
-                --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
-                --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.5.0\n'; return ;;
-                --*) nik_die "Nieznana opcja: $argument" ;;
-            esac
-        fi
-        args+=("$argument")
-    done
-    if [[ -n $extension_dir ]]; then
-        [[ -d $extension_dir ]] || nik_die 'Brak katalogu rozszerzeń.'
-        for extension in "$extension_dir"/*.sh; do
-            [[ -f $extension ]] || continue
-            # shellcheck disable=SC1090
-            source "$extension"
-        done
-    fi
-    command=${args[0]:-help}
-    if [[ $command == help || $command == pomoc || $help == 1 ]]; then if [[ $command == help || $command == pomoc ]]; then nik_help "${args[1]:-}"; else nik_help "$command"; fi; return; fi
-    if [[ $command == commands || $command == polecenia ]]; then printf '%s\n' "${!NIK_HANDLERS[@]}" | sort; return; fi
-    if [[ $command == __complete ]]; then nik_completion_candidates "${args[@]:1}"; return; fi
-    nik_id "$command"
-    [[ -v NIK_HANDLERS[$command] ]] || { nik_suggest "$command" "${!NIK_HANDLERS[@]}"; nik_die "Nieznana komenda: $command"; }
-    if (( ${NIK_DESTRUCTIVE[$command]} && !NIK_CONFIRM && !NIK_DRY_RUN )); then nik_die 'Ta komenda wymaga --potwierdz. Najpierw możesz użyć --podglad.'; fi
-    nik_settings
-    "${NIK_HANDLERS[$command]}" "${args[@]:1}"
-}

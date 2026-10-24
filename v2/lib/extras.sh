@@ -45,7 +45,7 @@ nik_cmd_favorite() {
             (
                 umask 077
                 mkdir -p -- "$NIK_CONFIG/favorites"
-                flock -x 9
+                nik_lock 9 || return "$?"
                 [[ ! -e $file && ! -L $file ]] || nik_die 'Zestaw już istnieje.'
                 tmp=$(mktemp "$NIK_CONFIG/favorites/.pending.XXXXXX")
                 trap 'rm -f -- "$tmp"' EXIT
