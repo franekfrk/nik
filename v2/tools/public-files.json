@@ -102,6 +102,7 @@
   "tests/test_play.py",
   "tests/test_player_status.py",
   "tests/test_result_data.py",
+  "tests/test_result_view.js",
   "tests/test_scenarios.py",
   "tests/test_world_backup.py",
   "tools/audit-items.py",

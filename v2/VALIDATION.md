@@ -306,3 +306,9 @@ Interfejs sprawdzono także w przeglądarce z atrapą Docker/RCON.
 Odczyt rzeczywistego serwera potwierdził 38 zajętych slotów. Wykryto też zmianę
 slotów podczas sekwencyjnego odczytu; NIK ponawia taki odczyt raz i przy dalszej
 niespójności zwraca jasny błąd bez częściowego wyniku graficznego.
+
+## Poprawka podglądu wyników podczas zadania w tle
+
+Sześć testów JavaScript sprawdza otwieranie historii podczas pracy, zachowanie
+wyniku po zakończeniu zadania w tle, powrót do jego postępu, spóźnione odpowiedzi
+HTTP, błąd transportu i odpowiedź przychodzącą po wylogowaniu.

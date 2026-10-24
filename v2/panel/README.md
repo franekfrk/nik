@@ -208,3 +208,7 @@ Bashowy NIK odpowiada za parsowanie SNBT, trwałość, scenariusze i wykonanie.
 `panel/server.py` uruchamia jego CLI, a `enhancements.js` prezentuje przekazane
 wyniki. Katalog oraz układ ulubionych są ustawieniami interfejsu. Hasła, historia,
 preferencje i własne scenariusze nie trafiają do publicznego repozytorium ani ZIP-a.
+
+Podczas działania zadania w tle można otwierać wyniki zakończonych działań.
+Postęp i zakończenie zadania w tle nie zastępują aktualnie oglądanego wyniku.
+Do bieżącej operacji wrócisz przez jej wpis w kolejce.

@@ -17,4 +17,5 @@ jobs:
           node --check panel/static/app.js
           node --check panel/static/enhancements.js
           node --check panel/static/sw.js
+          node tests/test_result_view.js
       - run: bash tests/check.sh
