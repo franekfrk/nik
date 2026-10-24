@@ -32,7 +32,8 @@ nik_completion_candidates() {
             zaklnij) words=("${!NIK_ENCHANT_NAMES[@]}" "${!NIK_ENCHANT_MAX[@]}") ;;
             daj|encik) nik_item_candidates "$current"; return ;;
             efekt|usun) words=("${!NIK_EFFECTS[@]}") ;;
-            tp|dolacz) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" "${!NIK_PLACES[@]}") ;;
+            tp) words=(end "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" "${!NIK_PLACES[@]}") ;;
+            dolacz) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" "${!NIK_PLACES[@]}") ;;
             zestaw) for word in "$NIK_CONFIG"/favorites/*.tsv; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.tsv}"); done ;;
             wyposaz) for word in "$NIK_CONFIG"/sets/*.tsv; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.tsv}"); done ;;
         esac
@@ -54,7 +55,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.9.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.10.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

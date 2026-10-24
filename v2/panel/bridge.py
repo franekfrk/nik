@@ -122,7 +122,7 @@ def metadata(root,config):
  if plans.returncode:raise InputError('NIK nie mógł odczytać scenariuszy.')
  import json
  scenarios=json.loads(plans.stdout)['scenarios']
- return {'scenarios':scenarios,'kits':kits,'equipment':equipment,'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.5','actions':list(ACTIONS)}
+ return {'scenarios':scenarios,'kits':kits,'equipment':equipment,'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'teleport_places':sorted({'end',*[r[0] for r in rows(config/'places.tsv')]}),'rewards':rewards,'version':'NIK Mobile 1.5','actions':list(ACTIONS)}
 
 REPLAY_FIELDS={'action','player','item','creature','count','enchantments','effect','duration','level','place','name','text','seconds','reward','weather','mode','kit','scenario','steps','preview'}
 def replay_request(data):

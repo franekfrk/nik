@@ -27,6 +27,8 @@ nik_response_failed() {
 }
 nik_rcon() {
     local command=$1 output plain rc=0 noop=0 silent=0 result=OK
+    NIK_RCON_UNCERTAIN=0
+    NIK_RCON_ERROR_RESPONSE=''
     local allow_missing=${2:-0}
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
@@ -37,6 +39,7 @@ nik_rcon() {
         rc=$?; nik_log ERROR "$command" || true; return "$rc"
     fi
     output=$(nik_docker exec "$NIK_CONTAINER" rcon-cli "$command") || rc=$?
+    ((rc == 0)) || NIK_RCON_UNCERTAIN=1
     # Minecraft command failures may still arrive with Docker exit code zero.
     plain=$(printf '%s' "$output" | sed -E $'s/\033\\[[0-9;]*[[:alpha:]]//g')
     plain=${plain//$'\r'/}
@@ -56,17 +59,21 @@ nik_rcon() {
     # is empty; parse/target errors are still detected and transport must pass.
     if [[ $command == 'tellraw '* && -z ${plain//[[:space:]]/} ]]; then silent=1; fi
     if ((rc == 0 && !noop)); then
-        if { [[ -z ${plain//[[:space:]]/} ]] && (( !silent )); } || nik_response_failed "$command" "$plain"; then rc=1; fi
+        if { [[ -z ${plain//[[:space:]]/} ]] && (( !silent )); } || nik_response_failed "$command" "$plain"; then
+            rc=1
+            [[ -n ${plain//[[:space:]]/} ]] || NIK_RCON_UNCERTAIN=1
+        fi
     fi
     if ((rc)); then
         nik_log ERROR "$command" || true
+        NIK_RCON_ERROR_RESPONSE=$plain
         nik_rcon_error "$plain" "$rc"
         nik_message 2 error 'NIK: polecenie niepotwierdzone. Przerwano; wcześniejsze kroki mogły zostać wykonane.\n%s\n' "$output"
         return "$rc"
     fi
     NIK_RCON_RESPONSE=$plain
     ((noop == 0)) || result=NOOP
-    nik_log "$result" "$command" || { nik_message 2 error 'NIK: wykonano komendę, ale zapis wyniku do logu nie powiódł się.\n'; return 1; }
+    nik_log "$result" "$command" || { nik_message 2 error 'NIK: wykonano komendę, ale zapis wyniku do logu nie powiódł się.\n'; NIK_RCON_UNCERTAIN=1; return 1; }
     if ((silent && noop)); then :; elif ((silent)); then nik_message 1 success 'Wysłano wiadomość od Taty.\n'; elif ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
 }
 

@@ -40,7 +40,9 @@ nik_cmd_tp() {
     if (($# == 2)); then
         local target=${2,,} x y z dimension
         nik_id "$target"
-        if [[ -v NIK_PLACES[$target] ]]; then
+        if [[ $target == end ]]; then
+            nik_tp_end "$player"; return
+        elif [[ -v NIK_PLACES[$target] ]]; then
             read -r x y z dimension <<< "${NIK_PLACES[$target]}"
             command="execute in $dimension run tp $player $x $y $z"
         else nik_player "$target"; command="tp $player $REPLY"; fi

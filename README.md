@@ -5,7 +5,7 @@
 NIK to przede wszystkim **modułowy projekt Bash z polskimi komendami do
 Minecraft Java**. Obsługuje przedmioty, zaklęcia, efekty, teleporty, tryby gry,
 zestawy, wiadomości i kopie świata. Terminal ma kolorowe listy i baner,
-uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.9.0**.
+uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.10.0**.
 
 Do projektu należy też **opcjonalny panel WWW/PWA NIK Mobile** — minecraftowa
 nakładka na oryginalny `nik.sh`. **Dziecko lub gracz może wpisywać polskie
@@ -30,6 +30,12 @@ flowchart LR
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
 w [`archive/v1/`](archive/v1/). Archiwum zachowuje historyczny kod; instaluj v2.
+
+## Nowości 2.10 — End jednym poleceniem
+
+`tp g1 end` dobiera miejsce z podłożem i przestrzenią dla postaci na głównej
+wyspie Endu. Działa w terminalu i panelu oraz zapisuje punkt do `powrot g1`.
+Przy utracie RCON zachowuje awaryjną pozycję wyjściową i nie ponawia teleportacji.
 
 ## Nowości 2.9 / Mobile 1.5
 

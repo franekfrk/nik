@@ -8,6 +8,31 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.10.0 — End jednym poleceniem
+
+```bash
+tp g1 end
+powrot g1
+```
+
+`end` jest wbudowanym celem teleportacji. Minecraft dobiera miejsce z podłożem
+i dwoma wolnymi blokami na postać w pobliżu środka głównej wyspy: obszar
+X 8–24, Z -8–8, poniżej Y 96. Korzysta z natywnego `spreadplayers` i reguł
+bezpiecznego podłoża vanilla. Przy braku odpowiedniego miejsca komenda kończy
+się błędem przed teleportacją. Normalne zasady gry i walki nadal obowiązują.
+
+Cel działa również w panelu „Teleport do punktu”, bez zapisanego miejsca i bez
+obecności drugiego gracza w Endzie. Wpis `end` w places.tsv ustępuje temu
+wbudowanemu celowi; własne współrzędne można zapisać pod inną nazwą.
+
+Pozycja wyjściowa jest zapisywana do `powrot`. Przy zerwaniu RCON albo pustym
+potwierdzeniu zachowywany jest dodatkowy prywatny punkt awaryjny. Wynik jest
+oznaczany jako niepewny i komenda nie jest ponawiana. Po odzyskaniu połączenia
+`powrot GRACZ` w pierwszej kolejności korzysta z punktu awaryjnego.
+
+Reguły podłoża sprawdzono w implementacji Mojang 26.3 i
+[oficjalnych zmianach spreadplayers](https://feedback.minecraft.net/hc/en-us/articles/48913133328013-Minecraft-Java-Edition-26-3).
+
 ## NIK 2.9.0 / Mobile 1.5 — kolejka i scenariusze
 
 - Dodawaj kolejne akcje, gdy poprzednia pracuje w tle. Serwer wykonuje jedną

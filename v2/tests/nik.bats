@@ -51,6 +51,9 @@ if [[ $MOCK_MODE == travel ]]; then
           Dimension) printf '%s\n' 'PlayerOne has the following entity data: "minecraft:the_nether"' ;;
           Rotation) printf '%s\n' 'PlayerOne has the following entity data: [45.5f, -12.0f]' ;;
         esac
+    elif [[ ${MOCK_TP_TRANSPORT:-0} == 1 ]]; then printf 'connection lost\n'; exit 124
+    elif [[ ${MOCK_TP_EMPTY:-0} == 1 ]]; then :
+    elif [[ -n ${MOCK_TP_RESPONSE:-} ]]; then printf '%s\n' "$MOCK_TP_RESPONSE"
     elif [[ ${MOCK_TP_ERROR:-0} == 1 ]]; then printf 'No entity was found\n'
     else printf 'Teleported PlayerOne to 1, 64, 2\n'; fi
     exit 0
@@ -89,7 +92,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.9.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.10.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -681,7 +684,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.9.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.10.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -1295,4 +1298,81 @@ MOCK
   run nik napraw g1
   [ "$status" -eq 0 ]; [[ $output == *'nie ma zapisanych uszkodzeń'* ]]
   ! grep -q 'item modify' "$MOCK_CALLS"
+}
+
+@test 'End shortcut selects a native safe surface without Docker in preview' {
+  printf 'end\t-12\t120\t7\tminecraft:the_end\n' >> "$NIK_CONFIG/places.tsv"
+  run nik --podglad tp g1 end
+  [ "$status" -eq 0 ]; [[ $output == *'execute in minecraft:the_end run spreadplayers 16 0 0 8 under 96 false PlayerOne'* ]]
+  [[ $output != *'run tp PlayerOne -12 120 7'* && $output != *'effect give'* && $output != *'gamemode'* && $output != *'fill '* ]]
+  [ ! -e "$MOCK_CALLS" ]; [ ! -d "$NIK_STATE" ]
+}
+@test 'End shortcut keeps normal return coordinates and never modifies terrain or effects' {
+  export MOCK_MODE=travel
+  run nik tp g1 end; [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+  [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
+  ! grep -E 'effect give|fill |setblock|gamemode|forceload' "$MOCK_CALLS"
+  run nik powrot g1; [ "$status" -eq 0 ]; [[ $output == *'Teleported'* ]]
+  grep -q 'execute in minecraft:the_nether run tp PlayerOne 12.5 64 -9.25 45.5 -12' "$MOCK_CALLS"
+}
+@test 'End shortcut aborts before movement when player position is unavailable' {
+  export MOCK_MODE=travel MOCK_LOCATION_ERROR=Pos
+  run nik tp g1 end; [ "$status" -ne 0 ]; ! grep -q 'run spreadplayers' "$MOCK_CALLS"
+  [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
+}
+@test 'End surface rejection never falls back to a fixed height or overwrites a previous return' {
+  export MOCK_MODE=travel
+  run nik tp g1 dom; [ "$status" -eq 2 ] # example config intentionally has no home
+  run nik tp g1 1 64 2; [ "$status" -eq 0 ]; cp "$NIK_STATE/returns/PlayerOne.json" "$WORK/old-return"
+  export MOCK_TP_RESPONSE='Could not spread 1 entities around 16.00, 0.00'
+  run nik tp g1 end; [ "$status" -ne 0 ]; cmp "$WORK/old-return" "$NIK_STATE/returns/PlayerOne.json"
+  [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]; [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'End timeout preserves an emergency origin and does not retry movement' {
+  export MOCK_MODE=travel MOCK_TP_TRANSPORT=1
+  run nik tp g1 end; [ "$status" -eq 124 ]; [[ $output == *'wynik teleportacji jest niepewny'* ]]
+  [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]; [ "$(stat -c %a "$NIK_STATE/returns/PlayerOne.uncertain.json")" = 600 ]
+  [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
+  unset MOCK_TP_TRANSPORT
+  run nik powrot g1; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
+}
+@test 'empty teleport acknowledgement is uncertain and emergency return remains on a failed return' {
+  export MOCK_MODE=travel MOCK_TP_EMPTY=1
+  run nik tp g1 end; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
+  unset MOCK_TP_EMPTY; export MOCK_TP_ERROR=1
+  run nik powrot g1; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
+}
+@test 'End shortcut validates player and argument count before any Docker call' {
+  run nik tp unknown end; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik tp g1 end extra; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'End completion works without a saved point and does not change player-join completion' {
+  run nik __complete tp 2 end; [ "$status" -eq 0 ]; [ "$output" = end ]
+  run nik __complete dolacz 2 end; [ "$status" -eq 0 ]; [ -z "$output" ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'an emergency return symlink prevents End movement' {
+  mkdir -p "$NIK_STATE/returns"; ln -s "$WORK/elsewhere" "$NIK_STATE/returns/PlayerOne.uncertain.json"
+  export MOCK_MODE=travel
+  run nik tp g1 end; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+
+@test 'uncertain End teleport keeps the previous return and recovery takes priority' {
+  export MOCK_MODE=travel
+  run nik tp g1 1 64 2; [ "$status" -eq 0 ]
+  python3 - "$NIK_STATE/returns/PlayerOne.json" <<'PYRECORD'
+import json,sys
+p=sys.argv[1];data=json.load(open(p));data['position']=['5','65','6'];open(p,'w').write(json.dumps(data))
+PYRECORD
+  cp "$NIK_STATE/returns/PlayerOne.json" "$WORK/old-return"
+  export MOCK_TP_TRANSPORT=1
+  run nik --json tp g1 end; [ "$status" -eq 124 ]; [[ $output == *'teleport_uncertain'* ]]
+  cmp "$WORK/old-return" "$NIK_STATE/returns/PlayerOne.json"
+  unset MOCK_TP_TRANSPORT
+  run nik powrot g1; [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+  grep -q 'run tp PlayerOne 12.5 64 -9.25' "$MOCK_CALLS"
+}
+@test 'unavailable Docker aborts End teleport before movement without emergency state' {
+  export MOCK_MODE=travel MOCK_RUNNING=false
+  run nik tp g1 end; [ "$status" -ne 0 ]
+  ! grep -q 'run spreadplayers' "$MOCK_CALLS"; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
 }

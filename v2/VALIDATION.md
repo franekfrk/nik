@@ -323,3 +323,14 @@ Testy interfejsu w przeglądarce potwierdzają dodawanie drugiego zadania w tle,
 anulowanie oczekującego, formularz powtórzenia, zmianę kolejności i zapis kroków,
 podgląd NIK oraz rozwijane wyniki kroków. Operacje zmieniające grę testowano
 na atrapie Docker/RCON; serwer produkcyjny sprawdzany jest odczytami i podglądem.
+
+## Wydanie 2.10.0 — End i niepewny wynik RCON
+
+Dodano 11 testów Bats: podgląd, pierwszeństwo wbudowanego celu, zapis powrotu,
+brak gracza, odrzucenie podłoża, timeout i pusta odpowiedź, zachowanie starego
+powrotu i pierwszeństwo awaryjnego, błędne argumenty, Tab, dowiązania oraz
+nieaktywny kontener. Testy nie teleportują graczy serwera produkcyjnego.
+Dwa testy panelu sprawdzają udostępnienie celu wyłącznie w teleportach oraz
+podgląd przez oryginalny NIK. Łącznie: 156 testów Python, 242 Bats i 8 JavaScript.
+Implementację doboru podłoża i zmiany wymiaru sprawdzono w klasie Mojang
+SpreadPlayersCommand z cache używanej wersji 26.3.

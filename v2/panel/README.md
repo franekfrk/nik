@@ -231,3 +231,10 @@ Kroki planu przesuwasz strzałkami; dodajesz i usuwasz wiersze. W oknie uruchami
 scenariusza „Sprawdź plan bez zmian w grze” zleca NIK --podglad. Wynik każdego
 kroku ma rozwijane szczegóły. Polskie komunikaty błędów pochodzą z NIK, a surowe
 odpowiedzi gry pozostają dostępne do diagnozy.
+
+## End
+
+W „Teleport do punktu” wybierz „End — lądowanie na powierzchni”. Panel wywołuje
+`nik tp GRACZ end`. NIK dobiera podłoże przez mechanizm Minecrafta i zapisuje
+punkt powrotu. Przy utracie RCON zobaczysz informację o niepewnym wyniku i
+zapisanej pozycji wyjściowej. Po odzyskaniu połączenia użyj „Wróć na miejsce”.
