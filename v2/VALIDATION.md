@@ -1,6 +1,6 @@
 # NIK v2 — audyt i weryfikacja, 2026-10-24
 
-Wynik kontroli kodu lokalnie i na serwerze: **192/192 testy Bats**, `bash -n`, ShellCheck 0.11.0,
+Wynik kontroli kodu lokalnie i na serwerze: **213/213 testy Bats**, `bash -n`, ShellCheck 0.11.0,
 `py_compile` narzędzi Python i audyt całego katalogu danych.
 
 ## Znalezione i poprawione problemy
@@ -69,7 +69,7 @@ bez nadpisywania slotów, podpowiedzi literówek i polskie opcje z aliasami angi
 Testy Bats obejmują nowe komendy, walidację całego zestawu przed wykonaniem,
 kontrolę błędów gry i uzupełnianie Tab.
 
-35 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
+Testy Python uruchamiają rzeczywisty kod archiwizacji i przywracania na
 izolowanym modelu Dockera oraz osobnym katalogu świata. Obejmują zgodność zawartości,
 kopię przed przywracaniem, zastępowanie starych plików, osobne wymiary,
 błędne archiwum, dowiązania, wyjście poza katalog, błąd archiwizacji, błąd
@@ -172,3 +172,27 @@ konsoli, więc nie wykonano zmian w produkcyjnym świecie. Log:
 `~/.nik/logs/features-24-parser-check.log`. Układ pomocy obejrzano także na
 kolorowym renderze 80-kolumnowym i sprawdzono testami w szerokości 40 znaków.
 Ramki używają podstawowych znaków box drawing, bez wymagania fontu emoji.
+
+## Rozszerzenia 2.5 — menu, prowadzenie i zabawa
+
+Pełny zestaw obejmuje 213 testów Bats i 51 testów Python oraz bash -n, ShellCheck
+0.11.0 i audyt danych. Nowe testy obejmują kierunki względem patrzenia, odległość,
+różnicę wysokości, niezgodny wymiar, zatrzymanie po błędzie, podgląd bez zapisu,
+walidację czasu/tekstu, sekwencję odliczania, losowanie i blokadę nadpisania
+aktywnego zadania, prywatne nagrody, pełną walidację zestawu przed dawaniem,
+błędy RCON, ścieżki/dowiązania, Tab i renderowanie wszystkich stałych wyników
+z 2042 oficjalnych receptur Minecraft 26.3.
+
+Pięć testów uruchamia rzeczywiste menu Bash w pseudoterminalu: wybór gracza,
+wyjście, formularz odliczania z podglądem, anulowanie, zmiana gracza, odzyskanie
+po błędzie oraz dosłowne traktowanie znaków powłoki w treści. Nie wykonują
+komend wobec prawdziwych graczy. Podgląd wyglądu wygenerowano z faktycznego
+wyjścia ANSI menu przy szerokości 76 kolumn.
+
+Parser produkcyjnego Minecraft 26.3 przyjął 13 nowych wariantów poleceń title/give;
+celowo błędne polecenie kontrolne zostało odrzucone. Sprawdzono pusty kontekst
+konsoli execute as @s, dlatego test nie wysłał wiadomości prawdziwym graczom,
+nie dał im nagród i nie zmienił świata. Test parsera nie potwierdza wyglądu
+na ekranie klienta Bedrock/Java; geometria prowadzenia ma osobne testy jednostkowe.
+Przed wdrożeniem zachowywana jest kopia zmienianych plików, prywatny config
+pozostaje na miejscu, a po wdrożeniu sprawdzany jest nik status.

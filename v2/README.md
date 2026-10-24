@@ -7,6 +7,56 @@ NIK to modułowy interfejs Bash do Minecraft Java w Dockerze. Możesz pisać
 Pomoc, listy i komunikaty używają minecraftowych kolorów; baner i pomoc mają
 tęczowy podpis. Tryb `--podglad` pokazuje plan bez wykonywania komend.
 
+## Nowe w 2.5 — menu i wspólna zabawa
+
+```bash
+nik menu
+prowadz g1 baza              # pasek nad ekwipunkiem; domyślnie do 60 s
+prowadz g1 baza 2m           # odczyt pozycji i kierunku co 2 s, maks. 10 min
+odliczanie g1 10 "Start!"
+losuj g1                     # losowe zadanie + książka od Taty
+nagroda lista
+nagroda g1 budowniczy
+przepis pochodnia
+```
+
+Menu wybiera gracza, kategorię, czynność i potrzebne argumenty. Przed uruchomieniem
+pokazuje komendę i wybór: wykonaj, podgląd albo anuluj. Błędne dane nie zamykają menu.
+Wymaga interaktywnego terminala; `nik menu --podglad` zachowuje podgląd wszystkich
+wybranych czynności. Menu nie włącza automatycznie ochrony świata ani operacji
+wymagających `--potwierdz`. Klasyczne komendy i Tab nadal działają.
+
+`prowadz` pokazuje kierunek względem aktualnego patrzenia, odległość poziomą i różnicę
+wysokości. Działa w tym samym wymiarze; nie wyznacza bezpiecznej drogi ani nie omija
+przeszkód. Kończy się przy zbliżeniu na mniej niż 3 bloki w poziomie, upływie czasu,
+błędzie odczytu lub Ctrl+C. Sprawdź różnicę wysokości! Nie teleportuje gracza.
+Po zatrzymaniu ostatni pasek znika zgodnie ze zwykłym czasem wyświetlania gry.
+`odliczanie` przyjmuje 1–60 sekund, działa na pierwszym planie; Ctrl+C zatrzymuje.
+Czasy są orientacyjne i obejmują opóźnienia RCON. Tytuły/pasek mogą być zastępowane
+przez inne komendy lub pluginy.
+
+Własna lista wyzwań: `config/challenges.txt`, jedno wyzwanie na wiersz, komentarze
+zaczynają się od `#`. Każdy tekst ma 1–512 znaków. Bez tego pliku używana jest lista
+przykładowa w `data/challenges.txt`. `losuj` korzysta z istniejącego systemu zadań:
+nie nadpisuje aktywnego zadania. Najpierw `zadanie GRACZ gotowe` lub świadomie usuń.
+Wykonanie wyzwania oznaczasz ręcznie; nagroda nie jest przyznawana automatycznie.
+
+Własne nagrody: `config/rewards/NAZWA.tsv` (nadpisują przykładową nagrodę o tej
+samej nazwie). Wiersz: angielskie ID przedmiotu bez `minecraft:`, tabulator, ilość.
+Przykład: `diamond<TAB>3`, `torch<TAB>64`. Maksymalnie 36 wierszy, 1–2304 sztuki
+na wiersz. Pełna lista jest sprawdzana przed dawaniem. Kolejne wywołanie ponownie
+daje nagrodę; błąd gry w połowie może pozostawić wcześniej dane przedmioty.
+Przy pełnym ekwipunku `/give` może upuścić przedmioty obok gracza.
+
+`przepis` korzysta z 2042 oficjalnych plików receptur vanilla Minecraft Java 26.3.
+Pokazuje stałe wyniki: układ siatki z legendą, składniki zamienne, piece,
+przecinarkę i ulepszenia kowalskie. Kilka receptur tego samego wyniku wyświetla
+osobno. To katalog podstawowej gry: nie uwzględnia zmian datapacków, handlu,
+łupów, warzenia mikstur ani dynamicznych wyników receptur specjalnych.
+Dla przedmiotu bez stałej receptury wyjaśnia brak wpisu. Receptury działają offline.
+Prywatne wyzwania i nagrody należą do `config/`, są wykluczone z publicznego ZIP-a
+oraz Gita, a dołączane tylko do paczki prywatnej.
+
 ## Wymagania
 
 Linux, Bash >= 4.4, Docker, `rcon-cli` wewnątrz kontenera, GNU coreutils

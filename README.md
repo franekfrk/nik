@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.4.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.5.0**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -38,6 +38,25 @@ Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
 z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
 pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
 Niestandardowe datapacki mogą wymagać osobnych zmian.
+
+## Nowe w 2.5 — kolorowe menu i zabawa
+
+```bash
+nik menu
+prowadz g1 baza              # kierunek i odległość w grze, bez teleportu
+odliczanie g1 10 "Start!"
+losuj g1                     # własna lista wyzwań + książka od Taty
+nagroda lista
+nagroda g1 budowniczy
+przepis pochodnia
+```
+
+Menu prowadzi przez wybór gracza, kategorii i czynności. Pokazuje komendę przed
+wykonaniem i pozwala wybrać podgląd lub anulowanie. Prowadzenie odświeża pasek
+co 2 sekundy przez domyślnie minutę; uwzględnia kierunek patrzenia, wymiar i wysokość,
+ale nie wyszukuje bezpiecznej trasy. Receptury pochodzą z 2042 plików vanilla 26.3.
+Własne wyzwania i nagrody zapisujesz w prywatnym `config/`; publiczna paczka ma
+wyłącznie przykłady. Szczegóły i ograniczenia: [instrukcja v2](v2/README.md).
 
 ## Nowe w 2.4 — wygoda i wspólne przygody
 

@@ -10,7 +10,7 @@ nik_register() {
 nik_help() {
     local name=${1:-} cmd group
     local -a groups=('PRZEDMIOTY I EKWIPUNEK' 'PODRÓŻE I RATUNEK' 'GRACZE I EFEKTY' 'OD TATY DLA FRANKA' 'ŚWIAT I STWORZENIA' 'SŁOWNIKI I WYSZUKIWANIE' 'SERWER I POZOSTAŁE')
-    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.4'
+    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.5'
     if [[ -n $name ]]; then
         [[ -v NIK_USAGE[$name] ]] || nik_die "Nieznana komenda: $name"
         nik_section 'JAK UŻYWAĆ'
@@ -221,6 +221,12 @@ nik_cmd_rotate() (
     if awk -v cutoff="$cutoff" '$1 >= cutoff' "$NIK_LOG" > "$tmp" && mv -- "$tmp" "$NIK_LOG"; then return 0; else rm -f -- "$tmp"; return 1; fi
 )
 nik_registry() {
+    nik_register prowadz nik_cmd_guide 0 'prowadz GRACZ MIEJSCE [CZAS]' 'Kierunek i odległość w grze co 2 s; domyślnie 60 s, Ctrl+C kończy.'
+    nik_register odliczanie nik_cmd_countdown 0 'odliczanie GRACZ SEKUNDY [TEKST]' 'Kolorowe odliczanie 1–60 sekund i duży napis na koniec.'
+    nik_register losuj nik_cmd_random 0 'losuj GRACZ' 'Wylosuj zadanie z własnej listy i daj książkę od Taty.'
+    nik_register nagroda nik_cmd_reward 0 'nagroda GRACZ NAZWA | lista' 'Daj zestaw nagród i wyświetl gratulacje od Taty.'
+    nik_register przepis nik_cmd_recipe 0 'przepis PRZEDMIOT' 'Składniki i układ wytwarzania z oficjalnych receptur 26.3.'
+    nik_register menu nik_cmd_menu 0 'menu' 'Kolorowe menu: wybierz gracza, kategorię i czynność.'
     nik_register ratunek nik_cmd_rescue 0 'ratunek GRACZ [MIEJSCE]' 'Ratunek do domu lub punktu: ochrona przed ogniem, odmrożenie i leczenie.'
     nik_register napraw nik_cmd_repair 0 'napraw GRACZ' 'Napraw trzymany przedmiot z zachowaniem jego danych.'
     nik_register ender nik_cmd_ender 0 'ender GRACZ' 'Podgląd skrzyni Endera wskazanego gracza.'
@@ -286,7 +292,8 @@ nik_completion_candidates() {
     nik_settings
     if [[ $position == 1 ]]; then
         case $command in
-            szukaj) nik_item_candidates "$current"; return ;;
+            przepis|szukaj) nik_item_candidates "$current"; return ;;
+            nagroda) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             pogoda) words=(slonce czysto deszcz burza) ;;
             ochrona) words=(status budowanie wylacz) ;;
             punkt) words=(lista usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
@@ -299,7 +306,8 @@ nik_completion_candidates() {
         esac
     elif [[ $position == 2 ]]; then
         case $command in
-            ratunek) words=("${!NIK_PLACES[@]}") ;;
+            nagroda) while IFS= read -r word; do words+=("$word"); done < <(nik_reward_names) ;;
+            prowadz|ratunek) words=("${!NIK_PLACES[@]}") ;;
             punkt) words=("${!NIK_PLACES[@]}") ;;
             zadanie) words=(pokaz ksiazka gotowe usun) ;;
             przywolaj) words=("${!NIK_CREATURES[@]}" "${!NIK_CREATURE_IDS[@]}" "${!NIK_CREATURE_ALIASES[@]}") ;;
@@ -327,7 +335,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.4.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.5.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

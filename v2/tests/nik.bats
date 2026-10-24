@@ -77,7 +77,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.4.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.5.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -668,7 +668,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.4.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.5.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -1068,4 +1068,102 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   tp=$(printf '%s\n' "$output" | awk '/run tp PlayerOne/{print NR}')
   thaw=$(printf '%s\n' "$output" | awk '/movement_speed modifier remove/{print NR}')
   [ "$health" -lt "$tp" ]; [ "$tp" -lt "$thaw" ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'new commands registered and shell shortcuts' {
+    run nik polecenia
+    [ "$status" -eq 0 ]; for command in prowadz odliczanie losuj nagroda przepis menu; do [[ $output == *"$command"* ]]; done
+    run bash -c 'source "$1"; alias prowadz odliczanie losuj nagroda przepis' _ "$ROOT/nik.sh"
+    [ "$status" -eq 0 ]
+}
+@test 'guidance preview has no reads writes Docker or sleep' {
+    printf 'baza\t100\t64\t200\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+    run nik prowadz g1 baza 10m --podglad
+    [ "$status" -eq 0 ]; [[ $output == *'actionbar'* && $output == *'600 s'* ]]; [ ! -e "$MOCK_CALLS" ]; [ ! -d "$NIK_STATE" ]
+}
+@test 'guidance rejects missing point and excessive duration' {
+    run nik prowadz g1 missing --podglad; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    printf 'baza\t100\t64\t200\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+    run nik prowadz g1 baza 11m --podglad; [ "$status" -eq 2 ]
+}
+@test 'guidance checks dimension before sending HUD' {
+    export MOCK_MODE=travel
+    printf 'baza\t100\t64\t200\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+    run nik prowadz g1 baza 1s; [ "$status" -eq 2 ]; [[ $output == *'innym wymiarze'* ]]; ! grep -q actionbar "$MOCK_CALLS"
+}
+@test 'guidance reaches nearby target with height information' {
+    export MOCK_MODE=travel
+    printf 'baza\t12.5\t80\t-9.25\tminecraft:the_nether\n' >> "$NIK_CONFIG/places.tsv"
+    run nik prowadz g1 baza; [ "$status" -eq 0 ]; grep -q actionbar "$MOCK_CALLS"; [[ $output == *'pobliżu'* ]]
+}
+@test 'guidance transport failure stops without HUD' {
+    export MOCK_MODE=transport
+    printf 'baza\t100\t64\t200\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+    run nik prowadz g1 baza 1s; [ "$status" -eq 7 ]; ! grep -q actionbar "$MOCK_CALLS"
+}
+@test 'countdown preview literal title and no sleeps or Docker' {
+    run nik odliczanie g1 3 'Brawo "Franek" ♥' --podglad
+    [ "$status" -eq 0 ]; [[ $output == *'"text":"3"'* && $output == *'"text":"1"'* && $output == *'aqua'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'countdown validates all input before first mutation' {
+    run nik odliczanie g1 61; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    run nik odliczanie g1 2 $'hello\nworld'; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'countdown game failure stops early' {
+    export MOCK_MODE=semantic
+    run nik odliczanie g1 2; [ "$status" -ne 0 ]; [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'random challenge preview does not save quest' {
+    printf 'Własne wyzwanie ♥\n' > "$NIK_CONFIG/challenges.txt"
+    run nik losuj g1 --podglad; [ "$status" -eq 0 ]; [[ $output == *'Własne wyzwanie ♥'* ]]; [ ! -d "$NIK_CONFIG/quests" ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'random challenge persists valid book and refuses active overwrite' {
+    printf 'Własne wyzwanie ♥\n' > "$NIK_CONFIG/challenges.txt"
+    run nik losuj g1; [ "$status" -eq 0 ]; [ -f "$NIK_CONFIG/quests/PlayerOne.json" ]; grep -q written_book "$MOCK_CALLS"
+    run nik losuj g1; [ "$status" -eq 2 ]
+}
+@test 'invalid challenge list causes no game action' {
+    printf '\033[31mBad\n' > "$NIK_CONFIG/challenges.txt"
+    run nik losuj g1; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'reward presets preview title and complete contents' {
+    run nik nagroda g1 budowniczy --podglad; [ "$status" -eq 0 ]; [[ $output == *'minecraft:diamond 3'* && $output == *'minecraft:oak_planks 64'* && $output == *'Brawo!'* ]]; [ ! -e "$MOCK_CALLS" ]
+    run nik nagroda lista; [ "$status" -eq 0 ]; [[ $output == *'odkrywca'* ]]
+}
+@test 'private reward overrides default and validates whole preset first' {
+    mkdir "$NIK_CONFIG/rewards"; printf 'diamond\t7\n' > "$NIK_CONFIG/rewards/budowniczy.tsv"
+    run nik nagroda g1 budowniczy --podglad; [ "$status" -eq 0 ]; [[ $output == *'diamond 7'* && $output != *'oak_planks'* ]]
+    printf 'diamond\t7\nunknown\t1\n' > "$NIK_CONFIG/rewards/budowniczy.tsv"
+    run nik nagroda g1 budowniczy; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'reward rejects paths and symlinks' {
+    run nik nagroda g1 ../secret; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+    mkdir "$NIK_CONFIG/rewards"; ln -s "$ROOT/data/rewards/budowniczy.tsv" "$NIK_CONFIG/rewards/test.tsv"
+    run nik nagroda g1 test; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'reward stops at first failed give' {
+    export MOCK_MODE=semantic
+    run nik nagroda g1 budowniczy; [ "$status" -ne 0 ]; [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'recipe supports Polish aliases and vanilla grid without Docker' {
+    run nik przepis pochodnia; [ "$status" -eq 0 ]; [[ $output == *'wynik: 4 szt.'* && $output == *'patyk'* && $output == *'wegiel'* ]]; [ ! -e "$MOCK_CALLS" ]
+    run nik przepis netherite_sword; [ "$status" -eq 0 ]; [[ $output == *'kowalski'* && $output == *'Szablon:'* ]]
+}
+@test 'recipes show alternatives and non craftable explanation' {
+    run nik przepis oak_planks; [ "$status" -eq 0 ]; [[ $output == *'dowolny układ'* ]]
+    run nik przepis dragon_egg; [ "$status" -eq 0 ]; [[ $output == *'Brak stałej receptury'* ]]
+}
+@test 'new completion includes recipes points and private rewards' {
+    run nik __complete przepis 1 poch; [ "$status" -eq 0 ]; [[ $output == *'pochodnia'* ]]
+    printf 'baza\t1\t64\t2\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+    run nik __complete prowadz 2 ba; [ "$status" -eq 0 ]; [[ $output == *'baza'* ]]
+    run nik __complete nagroda 2 bud; [ "$status" -eq 0 ]; [[ $output == *'budowniczy'* ]]
+}
+@test 'menu requires terminal and help remains available' {
+    run nik menu; [ "$status" -eq 2 ]; [[ $output == *'wymaga terminala'* ]]; [ ! -e "$MOCK_CALLS" ]
+    run nik menu --pomoc; [ "$status" -eq 0 ]; [[ $output == *'wybierz gracza'* ]]
+}
+@test 'one second countdown executes full title sequence in order' {
+    run nik odliczanie g1 1 'Start ♥'; [ "$status" -eq 0 ]
+    [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 5 ]
+    grep '^exec ' "$MOCK_CALLS" | tail -1 | grep -q 'Start ♥'
 }

@@ -1,0 +1,4 @@
+Minecraft Java 26.3: official server bundled jar, data/minecraft/recipe/*.json and tags/item/*.json.
+2042 recipes; extracted from the same SHA-verified vanilla jar used for existing catalogs.
+Source version metadata: https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json
+Challenges and rewards: original NIK examples, private overrides in config/.

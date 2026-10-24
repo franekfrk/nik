@@ -19,7 +19,7 @@ source "$NIK_ROOT/lib/colors.sh"
 # shellcheck source=lib/helpers.sh
 source "$NIK_ROOT/lib/helpers.sh"
 trap 'nik_unexpected "$?" "$LINENO"' ERR
-for module in config players items enchantments effects rcon display ui extras travel adventures family commands; do
+for module in config players items enchantments effects rcon display ui extras travel adventures family play menu commands; do
     # shellcheck disable=SC1090
     source "$NIK_ROOT/lib/$module.sh"
 done
