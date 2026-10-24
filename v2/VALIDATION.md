@@ -265,3 +265,5 @@ cache PWA i brak zmian w ochronie API. Grafiki są publiczne i nie zawierają da
 konfiguracji ani graczy.
 
 Kontrola: 231 testów Bats i 92 testy Python (w tym 26 testów panelu), bash -n, ShellCheck i kontrola składni JavaScript. Ikonki i podgląd sprawdzono w przeglądarce dla szerokości 390 px i widoku desktop.
+
+Sprawdzono też zamknięcie okna przez „Zostaw w tle” i ponowne otwarcie zakończonego wyniku z klikalnej historii. Odczyt historii nie wysyła ponownie polecenia. Wyniki pozostają w pamięci bieżącej strony.

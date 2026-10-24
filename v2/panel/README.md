@@ -115,3 +115,8 @@ Katalog, menu czynności i wybór przedmiotu używają prawdziwych ikonek Minecr
 wybranego przedmiotu. Dwa atlasy PNG są dostarczane z panelem i cache PWA.
 Nie potrzeba zewnętrznego CDN ani wysyłania zapytań o obrazki do Internetu.
 Pochodzenie i autorstwo: [ASSETS.md](ASSETS.md).
+
+W sekcji **Ostatnie działania** kliknij dowolny wpis, aby ponownie otworzyć wynik,
+również po użyciu „Zostaw w tle”. Wyniki ostatnich ośmiu działań są przechowywane
+w pamięci otwartej strony i znikają po jej odświeżeniu lub wylogowaniu. Nie trafiają
+do cache PWA ani localStorage.
