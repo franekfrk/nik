@@ -126,7 +126,7 @@ class Handler(BaseHTTPRequestHandler):
  def setup(self):super().setup();self.connection.settimeout(10)
  def log_message(self,*args):pass
  def response(self,status,payload,content_type='application/json; charset=utf-8',cookie=None):
-  body=json.dumps(payload,ensure_ascii=False).encode() if content_type.startswith('application/json') else payload
+  body=json.dumps(payload,ensure_ascii=False).encode() if content_type.startswith('application/json') and not isinstance(payload,bytes) else payload
   self.send_response(status);self.send_header('Content-Type',content_type);self.send_header('Content-Length',str(len(body)))
   self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer')
   self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
@@ -183,10 +183,10 @@ class Handler(BaseHTTPRequestHandler):
    self.response(200,app.view(id,owner));return
   if re.fullmatch('/api/jobs/[A-Za-z0-9_-]+',path):
    owner,_=self.authenticated();self.response(200,app.view(path.rsplit('/',1)[-1],owner));return
-  files={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/sw.js':'sw.js','/manifest.webmanifest':'manifest.webmanifest','/terrain.svg':'terrain.svg','/icon.svg':'icon.svg','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png','/apple-touch-icon.png':'apple-touch-icon.png'}
+  files={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/sw.js':'sw.js','/manifest.webmanifest':'manifest.webmanifest','/terrain.svg':'terrain.svg','/icon.svg':'icon.svg','/icons.css':'icons.css','/icons.json':'icons.json','/icons-items.png':'icons-items.png','/icons-creatures.png':'icons-creatures.png','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png','/apple-touch-icon.png':'apple-touch-icon.png'}
   if path not in files:raise HTTPError(404,'Nie znaleziono strony.')
   file=STATIC/files[path]
-  kinds={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png'}
+  kinds={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.json':'application/json; charset=utf-8'}
   self.response(200,file.read_bytes(),kinds[file.suffix])
  def handle_method(self,post):
   try:self.dispatch(post)

@@ -50,7 +50,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.6.1\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.6.2\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

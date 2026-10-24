@@ -16,6 +16,25 @@ class AdapterTests(unittest.TestCase):
   for host in ['0.0.0.0','8.8.8.8','127.0.0.2','::1']:
    with self.subTest(host=host),self.assertRaises(ValueError):server.listener_addresses({**cfg,'lan_bind':host})
   with self.assertRaises(ValueError):server.listener_addresses({**cfg,'origins':[]})
+ def test_minecraft_icons_cover_the_complete_catalog(self):
+  index=json.loads((ROOT/'panel/static/icons.json').read_text())
+  for kind,file in [('items','items.tsv'),('creatures','creatures.tsv')]:
+   ids={line.split('\t')[1] for line in (ROOT/'data'/file).read_text().splitlines() if line and not line.startswith('#')}
+   self.assertEqual(set(index[kind]),ids)
+   self.assertEqual(set(index['sources'][kind]),ids)
+   for source in index['sources'][kind].values():self.assertNotIn('?',source);self.assertNotIn('unknown',source.lower())
+   self.assertNotEqual(index[kind][next(iter(ids))],None)
+  self.assertNotEqual(index['items']['diamond_sword'],index['items']['diamond_pickaxe'])
+  self.assertNotEqual(index['creatures']['cow'],index['creatures']['pig'])
+ def test_icon_cells_fit_the_actual_atlases_and_pwa_caches_them(self):
+  import struct
+  index=json.loads((ROOT/'panel/static/icons.json').read_text());css=(ROOT/'panel/static/icons.css').read_text();sw=(ROOT/'panel/static/sw.js').read_text()
+  for kind in ['items','creatures']:
+   image=(ROOT/'panel/static'/('icons-'+kind+'.png')).read_bytes();self.assertEqual(image[:8],b'\x89PNG\r\n\x1a\n');width,height=struct.unpack('!II',image[16:24])
+   for id,(x,y) in index[kind].items():
+    self.assertGreaterEqual(x,0);self.assertGreaterEqual(y,0);self.assertLessEqual(x+32,width);self.assertLessEqual(y+32,height);self.assertIn('.mc-'+kind+'-'+id+'{',css)
+   self.assertIn('/icons-'+kind+'.png',sw)
+  self.assertIn('/icons.json',sw);self.assertIn('/icons.css',sw)
  def test_optional_counts_and_real_entrypoint(self):
   for count in [1,3,12,64]:
    args=bridge.argv(ROOT,ROOT/'config',{'action':'summon','player':'g1','creature':'krowa','count':count})
@@ -69,6 +88,10 @@ if [[ ${*: -1} == FAIL ]]; then exit 7; fi
   cls.thread=threading.Thread(target=cls.http.serve_forever,daemon=True);cls.thread.start()
  @classmethod
  def tearDownClass(cls):cls.http.shutdown();cls.http.server_close();cls.app.pool.shutdown(wait=True);cls.tmp.cleanup()
+ def test_icon_files_are_public_but_private_metadata_stays_protected(self):
+  for path,kind in [('/icons.json','application/json'),('/icons.css','text/css'),('/icons-items.png','image/png'),('/icons-creatures.png','image/png')]:
+   status,headers,body=self.request(path);self.assertEqual(status,200);self.assertTrue(headers['Content-Type'].startswith(kind))
+  self.assertEqual(self.request('/api/metadata')[0],401)
  def test_lan_http_login_has_httponly_cookie_without_secure(self):
   origin='http://192.168.1.10:6767';host='192.168.1.10:6767'
   self.app.origins.append(origin);self.app.hosts.add(host)

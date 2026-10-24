@@ -107,3 +107,11 @@ Telefon w tej samej sieci otwiera `http://ADRES_IPV4_SERWERA:6767`.
 Ten dostęp używa HTTP: hasło i komendy nie są szyfrowane w LAN. Pełna instalacja
 PWA i szyfrowanie nadal wymagają adresu HTTPS Tailscale. Sesje logowania dla obu
 adresów są oddzielne. Nie przekierowuj portu panelu na routerze do Internetu.
+
+## Ikonki Minecrafta (Mobile 1.1)
+
+Katalog, menu czynności i wybór przedmiotu używają prawdziwych ikonek Minecrafta.
+1657 przedmiotów i 90 stworzeń ma lokalne grafiki; w formularzu pojawia się podgląd
+wybranego przedmiotu. Dwa atlasy PNG są dostarczane z panelem i cache PWA.
+Nie potrzeba zewnętrznego CDN ani wysyłania zapytań o obrazki do Internetu.
+Pochodzenie i autorstwo: [ASSETS.md](ASSETS.md).

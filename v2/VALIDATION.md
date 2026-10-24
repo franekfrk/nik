@@ -255,3 +255,13 @@ limitów czasu i dziennika operacji. Odczyt rozbudowanego plecaka może potrwać
 Testy obejmują skrócone listy, przedmioty i mapy zaklęć, puste pola, starszy format,
 uszkodzenie przedmiotu oraz brak modyfikacji ekwipunku. Zestaw: 231 testów Bats,
 89 testów Python. Rzeczywisty plecak i skrzynia Endera sprawdzone bez zmian w grze.
+
+## NIK 2.6.2 — lokalne ikonki Minecrafta
+
+Panel Mobile 1.1 ma atlas dla wszystkich 1657 przedmiotów i 90 stworzeń,
+indywidualne ikonki w katalogu, minecraftowe ikonki czynności i podgląd wyboru.
+Testy sprawdzają pełne pokrycie katalogu, granice atlasów, publiczne trasy HTTP,
+cache PWA i brak zmian w ochronie API. Grafiki są publiczne i nie zawierają danych
+konfiguracji ani graczy.
+
+Kontrola: 231 testów Bats i 92 testy Python (w tym 26 testów panelu), bash -n, ShellCheck i kontrola składni JavaScript. Ikonki i podgląd sprawdzono w przeglądarce dla szerokości 390 px i widoku desktop.

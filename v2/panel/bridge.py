@@ -104,4 +104,4 @@ def metadata(root,config):
  enchantments=[{'id':r[0],'name':r[0].replace('_',' '),'max':int(maxima[r[1]][0]),'description':maxima[r[1]][1]} for r in rows(root/'data/enchantment-names.tsv')]
  effects=[{'id':r[0],'name':r[0].replace('_',' '),'description':r[2] if len(r)>2 else ''} for r in rows(root/'data/effects.tsv')]
  rewards=sorted({p.stem for directory in [root/'data/rewards',config/'rewards'] for p in directory.glob('*.tsv') if p.is_file() and not p.is_symlink()})
- return {'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.0','actions':list(ACTIONS)}
+ return {'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.1','actions':list(ACTIONS)}
