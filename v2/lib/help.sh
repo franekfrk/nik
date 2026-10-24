@@ -2,7 +2,7 @@
 nik_help() {
     local name=${1:-} cmd group
     local -a groups=('PRZEDMIOTY I EKWIPUNEK' 'PODRÓŻE I RATUNEK' 'GRACZE I EFEKTY' 'OD TATY DLA FRANKA' 'ŚWIAT I STWORZENIA' 'SŁOWNIKI I WYSZUKIWANIE' 'SERWER I POZOSTAŁE')
-    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.11'
+    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.12'
     if [[ -n $name ]]; then
         [[ -v NIK_USAGE[$name] ]] || nik_die "Nieznana komenda: $name"
         nik_section 'JAK UŻYWAĆ'

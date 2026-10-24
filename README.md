@@ -5,7 +5,7 @@
 NIK to przede wszystkim **modułowy projekt Bash z polskimi komendami do
 Minecraft Java**. Obsługuje przedmioty, zaklęcia, efekty, teleporty, tryby gry,
 zestawy, wiadomości i kopie świata. Terminal ma kolorowe listy i baner,
-uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.11.0**.
+uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.12.0**.
 
 Do projektu należy też **opcjonalny panel WWW/PWA NIK Mobile** — minecraftowa
 nakładka na oryginalny `nik.sh`. **Dziecko lub gracz może wpisywać polskie
@@ -330,6 +330,27 @@ Testy nie korzystają z produkcyjnego świata ani prywatnych ustawień.
 
 Pełne użycie: [README v2](v2/README.md). Zakres kontroli i ograniczenia:
 [VALIDATION.md](v2/VALIDATION.md).
+
+## NIK 2.12.0 — bezpieczny powrót do zwykłego świata
+
+```bash
+tp g1 swiat
+powrot g1
+```
+
+`swiat` jest wbudowanym celem w `minecraft:overworld`, dostępnym także w panelu.
+NIK szuka suchego miejsca przy X/Z 2–14, do Y=320, z dozwolonym podłożem i dwoma
+blokami powietrza. Woda, lawa, magma, sypki śnieg, kaktusy i liście nie są
+podłożem lądowania. Przy braku miejsca kończy operację przed ruchem gracza.
+Zwykłe zagrożenia gry, np. pobliskie potwory, pozostają aktywne.
+
+Świat i Nether używają wspólnego mechanizmu sondowania, ponownej kontroli
+miejsca bezpośrednio przy teleportacji i zapisu pozycji do `powrot`. Do czterech
+prób dotyczy tylko sondy; gracz jest przenoszony najwyżej raz. Własny zapis
+`swiat` w places.tsv ustępuje temu wbudowanemu celowi. Sonda i ładowanie chunka
+są sprzątane; przy utracie RCON prywatny `state/swiat-landing.lease` jest
+odzyskiwany podczas następnego `tp GRACZ swiat`, niezależnie od zapisu Netheru.
+Nie zmienia to bloków, efektów ani trybu gry gracza.
 
 ## NIK 2.11.0 — również bezpieczny Nether
 

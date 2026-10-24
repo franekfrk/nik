@@ -41,24 +41,26 @@ if [[ $MOCK_MODE == inventory ]]; then
     printf '%s\n' 'PlayerOne has the following entity data: [{Slot: 0b, id: "minecraft:diamond_sword", count: 1, components: {"minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:mending": 1}}}, {Slot: 9b, id: "minecraft:torch", count: 64}]'
     exit 0
 fi
-if [[ $MOCK_MODE == nether ]]; then
+if [[ $MOCK_MODE == nether || $MOCK_MODE == world ]]; then
+    if [[ $MOCK_MODE == world ]]; then mock_dimension=overworld; mock_floor=grass_block; else mock_dimension=the_nether; mock_floor=netherrack; fi
     command=${*: -1}
-    if [[ -n ${MOCK_NETHER_FAIL:-} && ( $MOCK_NETHER_FAIL == spawn && $command == *'run summon '* || $MOCK_NETHER_FAIL == spread && $command == *'run spreadplayers '* || $MOCK_NETHER_FAIL == final && $command == *'run tp PlayerOne '* || $MOCK_NETHER_FAIL == cleanup && $command == *'forceload remove '* ) ]]; then printf 'connection lost\n'; exit 124; fi
+    if [[ -n ${MOCK_SURFACE_FAIL:-} && ( $MOCK_SURFACE_FAIL == spawn && $command == *'run summon '* || $MOCK_SURFACE_FAIL == spread && $command == *'run spreadplayers '* || $MOCK_SURFACE_FAIL == final && $command == *'run tp PlayerOne '* || $MOCK_SURFACE_FAIL == cleanup && $command == *'forceload remove '* ) ]]; then printf 'connection lost\n'; exit 124; fi
     case $command in
       *'forceload query 0 0')
-        if [[ -e $MOCK_STATE.forced || ${MOCK_NETHER_FORCED:-0} == 1 ]]; then printf 'Chunk at [0, 0] in minecraft:the_nether is marked for force loading\n'
-        else printf 'Chunk at [0, 0] in minecraft:the_nether is not marked for force loading\n'; fi; exit 0 ;;
-      *'forceload add 0 0') touch "$MOCK_STATE.forced"; if [[ ${MOCK_NETHER_FAIL:-} == add ]]; then exit 124; fi; printf 'Marked chunk\n'; exit 0 ;;
+        if [[ -e $MOCK_STATE.forced || ${MOCK_SURFACE_FORCED:-0} == 1 ]]; then printf 'Chunk at [0, 0] in minecraft:%s is marked for force loading\n' "$mock_dimension"
+        else printf 'Chunk at [0, 0] in minecraft:%s is not marked for force loading\n' "$mock_dimension"; fi; exit 0 ;;
+      *'forceload add 0 0') touch "$MOCK_STATE.forced"; if [[ ${MOCK_SURFACE_FAIL:-} == add ]]; then exit 124; fi; printf 'Marked chunk\n'; exit 0 ;;
       *'forceload remove 0 0') rm -f "$MOCK_STATE.forced"; printf 'Unmarked chunk\n'; exit 0 ;;
-      'execute in minecraft:the_nether if loaded 0 64 0') [[ ${MOCK_NETHER_LOADED:-1} == 0 ]] || printf 'Test passed\n'; exit 0 ;;
+      'execute in minecraft:'*' if loaded 0 64 0') [[ ${MOCK_SURFACE_LOADED:-1} == 0 ]] || printf 'Test passed\n'; exit 0 ;;
       *'run summon '*) printf 'Summoned new Area Effect Cloud\n'; exit 0 ;;
-      *'run spreadplayers '*) printf 'Spread 1 entities\n'; exit 0 ;;
+      *'run spreadplayers '*) count=0; [[ ! -f $MOCK_STATE.tries ]] || read -r count < "$MOCK_STATE.tries"; printf '%s\n' "$((count+1))" > "$MOCK_STATE.tries"; printf 'Spread 1 entities\n'; exit 0 ;;
       *'run kill @s') printf 'Killed Area Effect Cloud\n'; exit 0 ;;
       *'run data get entity @s Pos')
-        if [[ ${MOCK_NETHER_BAD_REPLY:-0} == 1 ]]; then printf 'OK\n'; exit 0; fi
-        if [[ $command == *"if block ~ ~-1 ~ minecraft:${MOCK_NETHER_FLOOR:-netherrack} "* && ${MOCK_NETHER_AIR:-1} == 1 ]]; then printf 'Area Effect Cloud has the following entity data: [8.5d, 70.0d, 8.5d]\n'; fi; exit 0 ;;
+        if [[ ${MOCK_SURFACE_REJECT_FIRST:-0} == 1 && $(cat "$MOCK_STATE.tries") == 1 ]]; then exit 0; fi
+        if [[ ${MOCK_SURFACE_BAD_REPLY:-0} == 1 ]]; then printf 'OK\n'; exit 0; fi
+        if [[ $command == *"if block ~ ~-1 ~ minecraft:${MOCK_SURFACE_FLOOR:-$mock_floor} "* && ${MOCK_SURFACE_AIR:-1} == 1 ]]; then printf 'Area Effect Cloud has the following entity data: [8.5d, 70.0d, 8.5d]\n'; fi; exit 0 ;;
       *'run tp PlayerOne '*)
-        if [[ ${MOCK_NETHER_FINAL_EMPTY:-0} != 1 ]]; then printf 'Teleported PlayerOne\n'; fi; exit 0 ;;
+        if [[ ${MOCK_SURFACE_FINAL_EMPTY:-0} != 1 ]]; then printf 'Teleported PlayerOne\n'; fi; exit 0 ;;
     esac
     MOCK_MODE=travel
 fi
@@ -113,7 +115,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.11.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.12.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -705,7 +707,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.11.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.12.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -1405,7 +1407,7 @@ PYRECORD
   [ ! -e "$MOCK_CALLS" ]; [ ! -e "$NIK_STATE" ]; [[ $output != *'run tp PlayerOne -12'* ]]
 }
 @test 'Nether validates floor and two air blocks again in the sole player teleport' {
-  export MOCK_MODE=nether MOCK_NETHER_FLOOR=basalt
+  export MOCK_MODE=nether MOCK_SURFACE_FLOOR=basalt
   run nik tp g1 nether; [ "$status" -eq 0 ]
   [ "$(grep -c 'run tp PlayerOne ' "$MOCK_CALLS")" -eq 1 ]
   grep -q 'if block ~ ~-1 ~ minecraft:basalt if block ~ ~ ~ minecraft:air if block ~ ~1 ~ minecraft:air run tp PlayerOne ~ ~ ~' "$MOCK_CALLS"
@@ -1415,42 +1417,42 @@ PYRECORD
   run nik powrot g1; [ "$status" -eq 0 ]; [[ $output == *'Teleported'* ]]
 }
 @test 'Nether refuses magma and limits candidate retries before moving any player' {
-  export MOCK_MODE=nether MOCK_NETHER_FLOOR=magma_block
+  export MOCK_MODE=nether MOCK_SURFACE_FLOOR=magma_block
   run nik tp g1 nether; [ "$status" -ne 0 ]; [[ $output == *'nie znaleziono bezpiecznego podłoża'* ]]
   [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 4 ]
   ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"; [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]; [ ! -e "$MOCK_STATE.forced" ]
 }
 @test 'Nether refuses obstructed air even over a safe floor' {
-  export MOCK_MODE=nether MOCK_NETHER_AIR=0
+  export MOCK_MODE=nether MOCK_SURFACE_AIR=0
   run nik tp g1 nether; [ "$status" -ne 0 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
   [ ! -e "$NIK_STATE/nether-landing.lease" ]
 }
 @test 'Nether preserves a preexisting force loaded chunk' {
-  export MOCK_MODE=nether MOCK_NETHER_FORCED=1
+  export MOCK_MODE=nether MOCK_SURFACE_FORCED=1
   run nik tp g1 nether; [ "$status" -eq 0 ]
   ! grep -E 'forceload (add|remove)' "$MOCK_CALLS"; [ ! -e "$NIK_STATE/nether-landing.lease" ]
 }
 @test 'Nether aborts and releases its chunk on probe transport failure' {
-  export MOCK_MODE=nether MOCK_NETHER_FAIL=spread
+  export MOCK_MODE=nether MOCK_SURFACE_FAIL=spread
   run nik tp g1 nether; [ "$status" -eq 124 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
   [ ! -e "$MOCK_STATE.forced" ]; [ ! -e "$NIK_STATE/nether-landing.lease" ]
 }
 @test 'Nether final timeout keeps an emergency return without retrying movement' {
-  export MOCK_MODE=nether MOCK_NETHER_FAIL=final
+  export MOCK_MODE=nether MOCK_SURFACE_FAIL=final
   run nik tp g1 nether; [ "$status" -eq 124 ]; [[ $output == *'wynik teleportacji jest niepewny'* ]]
   [ "$(grep -c 'run tp PlayerOne' "$MOCK_CALLS")" -eq 1 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
   [ ! -e "$MOCK_STATE.forced" ]
 }
 @test 'Nether changed final condition retains recovery and never retries the player' {
-  export MOCK_MODE=nether MOCK_NETHER_FINAL_EMPTY=1
+  export MOCK_MODE=nether MOCK_SURFACE_FINAL_EMPTY=1
   run nik tp g1 nether; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
   [ "$(grep -c 'run tp PlayerOne' "$MOCK_CALLS")" -eq 1 ]
 }
 @test 'Nether cleanup failure retains a lease recovered by the next operation' {
-  export MOCK_MODE=nether MOCK_NETHER_FAIL=cleanup
+  export MOCK_MODE=nether MOCK_SURFACE_FAIL=cleanup
   run nik tp g1 nether; [ "$status" -eq 0 ]; [[ $output == *'sprzątanie chunka odłożone'* ]]
   [ -f "$NIK_STATE/nether-landing.lease" ]; [ "$(stat -c %a "$NIK_STATE/nether-landing.lease")" = 600 ]
-  unset MOCK_NETHER_FAIL
+  unset MOCK_SURFACE_FAIL
   run nik tp g1 nether; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/nether-landing.lease" ]; [ ! -e "$MOCK_STATE.forced" ]
 }
 @test 'Nether offline player creates neither probe nor chunk lease' {
@@ -1472,20 +1474,95 @@ PYRECORD
 }
 
 @test 'Nether never treats an unrelated probe response as a validated floor' {
-  export MOCK_MODE=nether MOCK_NETHER_BAD_REPLY=1
+  export MOCK_MODE=nether MOCK_SURFACE_BAD_REPLY=1
   run nik tp g1 nether; [ "$status" -ne 0 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
   [ ! -e "$MOCK_STATE.forced" ]
 }
 @test 'Nether chunk load wait is bounded and leaves no new force load behind' {
-  export MOCK_MODE=nether MOCK_NETHER_LOADED=0
+  export MOCK_MODE=nether MOCK_SURFACE_LOADED=0
   run nik tp g1 nether; [ "$status" -ne 0 ]; [[ $output == *'nie załadował się na czas'* ]]
   [ "$(grep -c 'if loaded' "$MOCK_CALLS")" -eq 15 ]; ! grep -q 'run summon' "$MOCK_CALLS"
   [ ! -e "$MOCK_STATE.forced" ]
 }
 @test 'Nether failed spawn and ambiguous chunk acquisition are cleaned before exit' {
-  export MOCK_MODE=nether MOCK_NETHER_FAIL=spawn
+  export MOCK_MODE=nether MOCK_SURFACE_FAIL=spawn
   run nik tp g1 nether; [ "$status" -eq 124 ]; [ ! -e "$MOCK_STATE.forced" ]; [ ! -e "$NIK_STATE/nether-landing.lease" ]
-  export MOCK_NETHER_FAIL=add
+  export MOCK_SURFACE_FAIL=add
   run nik tp g1 nether; [ "$status" -eq 124 ]; [ ! -e "$MOCK_STATE.forced" ]; [ ! -e "$NIK_STATE/nether-landing.lease" ]
   ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+}
+
+@test 'World shortcut previews safely and overrides an unsafe saved swiat point' {
+  printf 'swiat\t-12\t120\t7\tminecraft:the_end\n' >> "$NIK_CONFIG/places.tsv"
+  run nik --podglad tp g1 swiat; [ "$status" -eq 0 ]
+  [[ $output == *'Zwykły świat'* && $output == *'Y=320'* && $output == *'dwa bloki powietrza'* ]]
+  [[ $output != *'run tp PlayerOne -12'* ]]; [ ! -e "$MOCK_CALLS" ]; [ ! -e "$NIK_STATE" ]
+}
+@test 'World shortcut validates the overworld floor again in one player teleport and retains return' {
+  export MOCK_MODE=world
+  run nik tp g1 swiat; [ "$status" -eq 0 ]
+  grep -q 'execute in minecraft:overworld run spreadplayers 8 8 0 6 under 320 false' "$MOCK_CALLS"
+  grep -q 'if dimension minecraft:overworld.*if block ~ ~-1 ~ minecraft:grass_block if block ~ ~ ~ minecraft:air if block ~ ~1 ~ minecraft:air run tp PlayerOne ~ ~ ~' "$MOCK_CALLS"
+  [ "$(grep -c 'run tp PlayerOne' "$MOCK_CALLS")" -eq 1 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
+  [ ! -e "$MOCK_STATE.forced" ]; [ ! -e "$NIK_STATE/swiat-landing.lease" ]
+  ! grep -E 'effect give|setblock|fill |gamemode' "$MOCK_CALLS"
+  run nik powrot g1; [ "$status" -eq 0 ]; grep -q 'execute in minecraft:the_nether run tp PlayerOne 12.5 64 -9.25' "$MOCK_CALLS"
+}
+@test 'World shortcut rejects powder snow before any player movement' {
+  export MOCK_MODE=world MOCK_SURFACE_FLOOR=powder_snow
+  run nik tp g1 swiat; [ "$status" -ne 0 ]; [[ $output == *'nie znaleziono bezpiecznego podłoża'* ]]
+  [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 4 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]; [ ! -e "$MOCK_STATE.forced" ]
+}
+@test 'World shortcut rejects treetops rather than leaving the player above a fall' {
+  export MOCK_MODE=world MOCK_SURFACE_FLOOR=oak_leaves
+  run nik tp g1 swiat; [ "$status" -ne 0 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  [ ! -e "$MOCK_STATE.forced" ]
+}
+@test 'World shortcut rejects obstructed or flooded body space' {
+  export MOCK_MODE=world MOCK_SURFACE_AIR=0
+  run nik tp g1 swiat; [ "$status" -ne 0 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  [ ! -e "$MOCK_STATE.forced" ]
+}
+@test 'World shortcut can choose another probe candidate before moving the player once' {
+  export MOCK_MODE=world MOCK_SURFACE_REJECT_FIRST=1
+  run nik tp g1 swiat; [ "$status" -eq 0 ]; [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 2 ]
+  [ "$(grep -c 'run tp PlayerOne' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'World shortcut never removes a chunk that was already force loaded' {
+  export MOCK_MODE=world MOCK_SURFACE_FORCED=1
+  run nik tp g1 swiat; [ "$status" -eq 0 ]; ! grep -E 'forceload (add|remove)' "$MOCK_CALLS"
+}
+@test 'World shortcut stops before player movement on probe failure and cleans its chunk' {
+  export MOCK_MODE=world MOCK_SURFACE_FAIL=spread
+  run nik tp g1 swiat; [ "$status" -eq 124 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  [ ! -e "$MOCK_STATE.forced" ]; [ ! -e "$NIK_STATE/swiat-landing.lease" ]
+}
+@test 'World shortcut keeps emergency return on an ambiguous final teleport without retry' {
+  export MOCK_MODE=world MOCK_SURFACE_FAIL=final
+  run nik --json tp g1 swiat; [ "$status" -eq 124 ]; [[ $output == *'teleport_uncertain'* ]]
+  [ "$(grep -c 'run tp PlayerOne' "$MOCK_CALLS")" -eq 1 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
+  [ ! -e "$MOCK_STATE.forced" ]
+}
+@test 'World shortcut recovers its own interrupted chunk lease and preserves Nether state' {
+  export MOCK_MODE=world MOCK_SURFACE_FAIL=cleanup
+  run nik tp g1 swiat; [ "$status" -eq 0 ]; [ -f "$NIK_STATE/swiat-landing.lease" ]
+  [ "$(stat -c %a "$NIK_STATE/swiat-landing.lease")" = 600 ]
+  printf 'nether:0,0\n' > "$NIK_STATE/nether-landing.lease"
+  unset MOCK_SURFACE_FAIL
+  run nik tp g1 swiat; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/swiat-landing.lease" ]
+  [ "$(cat "$NIK_STATE/nether-landing.lease")" = nether:0,0 ]; [ ! -e "$MOCK_STATE.forced" ]
+}
+@test 'World shortcut validates arguments offline player and state symlinks before mutations' {
+  run nik tp unknown swiat; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik tp g1 swiat extra; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  export MOCK_MODE=world MOCK_LOCATION_ERROR=Pos
+  run nik tp g1 swiat; [ "$status" -ne 0 ]; ! grep -E 'run summon|forceload add|run tp PlayerOne' "$MOCK_CALLS"
+  rm "$MOCK_CALLS"; unset MOCK_LOCATION_ERROR
+  ln -s "$WORK/other" "$NIK_STATE/swiat-landing.lease"
+  run nik tp g1 swiat; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'World shortcut appears only in tp destination completion' {
+  run nik __complete tp 2 swi; [ "$status" -eq 0 ]; [[ $output == *swiat* ]]
+  run nik __complete prowadz 2 swi; [ "$status" -eq 0 ]; [[ $output != *swiat* ]]
 }

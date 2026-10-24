@@ -82,6 +82,13 @@ class AdapterTests(unittest.TestCase):
    cfg=Path(tmp)/'config';shutil.copytree(ROOT/'config.example',cfg)
    result=subprocess.run(bridge.argv(ROOT,cfg,{'action':'teleport','player':'g1','place':'nether','preview':True}),env=bridge.environment(ROOT),capture_output=True,text=True,timeout=20)
    self.assertEqual(result.returncode,0,result.stdout+result.stderr);final=json.loads(result.stdout.splitlines()[-1])['data'];self.assertTrue(final['ok']);self.assertIn('dwa bloki powietrza',final['output'])
+ def test_world_destination_is_available_through_original_nik_only_for_teleport(self):
+  metadata=bridge.metadata(ROOT,ROOT/'config.example');self.assertIn('swiat',metadata['teleport_places']);self.assertNotIn('swiat',metadata['places'])
+  import shutil,subprocess
+  with tempfile.TemporaryDirectory() as tmp:
+   cfg=Path(tmp)/'config';shutil.copytree(ROOT/'config.example',cfg)
+   result=subprocess.run(bridge.argv(ROOT,cfg,{'action':'teleport','player':'g1','place':'swiat','preview':True}),env=bridge.environment(ROOT),capture_output=True,text=True,timeout=20)
+   self.assertEqual(result.returncode,0,result.stdout+result.stderr);final=json.loads(result.stdout.splitlines()[-1])['data'];self.assertTrue(final['ok']);self.assertIn('Zwykły świat',final['output']);self.assertIn('dwa bloki powietrza',final['output'])
  def test_environment_drops_shell_injection_hooks(self):
   original=os.environ.get('BASH_ENV');os.environ['BASH_ENV']='/tmp/attack'
   try:self.assertNotIn('BASH_ENV',bridge.environment(ROOT))

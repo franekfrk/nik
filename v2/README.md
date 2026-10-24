@@ -8,6 +8,27 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.12.0 — bezpieczny powrót do zwykłego świata
+
+```bash
+tp g1 swiat
+powrot g1
+```
+
+`swiat` jest wbudowanym celem w `minecraft:overworld`, dostępnym także w panelu.
+NIK szuka suchego miejsca przy X/Z 2–14, do Y=320, z dozwolonym podłożem i dwoma
+blokami powietrza. Woda, lawa, magma, sypki śnieg, kaktusy i liście nie są
+podłożem lądowania. Przy braku miejsca kończy operację przed ruchem gracza.
+Zwykłe zagrożenia gry, np. pobliskie potwory, pozostają aktywne.
+
+Świat i Nether używają wspólnego mechanizmu sondowania, ponownej kontroli
+miejsca bezpośrednio przy teleportacji i zapisu pozycji do `powrot`. Do czterech
+prób dotyczy tylko sondy; gracz jest przenoszony najwyżej raz. Własny zapis
+`swiat` w places.tsv ustępuje temu wbudowanemu celowi. Sonda i ładowanie chunka
+są sprzątane; przy utracie RCON prywatny `state/swiat-landing.lease` jest
+odzyskiwany podczas następnego `tp GRACZ swiat`, niezależnie od zapisu Netheru.
+Nie zmienia to bloków, efektów ani trybu gry gracza.
+
 ## NIK 2.11.0 — również bezpieczny Nether
 
 ```bash

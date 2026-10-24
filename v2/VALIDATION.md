@@ -351,3 +351,20 @@ W tym teście końcową teleportację gracza zastąpiono kontrolą tylko do odcz
 Nie zmieniano pozycji graczy. Zwykłe zagrożenia gry pozostają aktywne.
 
 Zakres wydania: 157 testów Python, 257 Bats i 8 JavaScript; Bash-n, ShellCheck oraz audyty danych i granic publicznej paczki.
+
+## Wydanie 2.12.0 — bezpieczny zwykły świat
+
+Wspólny mechanizm lądowania jest sprawdzany dla Netheru i zwykłego świata.
+Nowe przypadki obejmują `tp GRACZ swiat`, podgląd bez Dockera, wbudowany cel
+zamiast starego punktu, podpowiedzi Tab, panel wywołujący oryginalny NIK,
+odrzucanie sypkiego śniegu i liści, przeszkody nad podłożem, ponowienie tylko
+samej sondy, powrót do poprzedniego wymiaru, zachowanie cudzego forceload,
+błędy transportu i awaryjny powrót, sprzątanie oraz oddzielne zapisy obu wymiarów.
+Zakres wydania: 158 testów Python, 269 Bats i 8 JavaScript oraz Bash-n,
+ShellCheck i audyty danych/publicznego manifestu.
+
+Na serwerze Paper 26.3 sprawdzono rzeczywistą sondę w zwykłym świecie:
+wybór podłoża, dwa wolne bloki, ponowną kontrolę po dwóch sekundach i sprzątanie
+z zachowaniem pierwotnego stanu forceload. W tym teście pominięto wyłącznie
+wstępny odczyt gracza, a końcowy ruch zastąpiono odczytem miejsca sondy.
+Nie teleportowano żadnego gracza.

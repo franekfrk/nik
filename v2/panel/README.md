@@ -244,3 +244,9 @@ zapisanej pozycji wyjściowej. Po odzyskaniu połączenia użyj „Wróć na mie
 W „Teleport do punktu” wybierz „Nether — bezpieczne lądowanie”. Panel uruchamia
 `nik tp GRACZ nether`; sonda, walidacja podłoża i punkt powrotu należą do NIK.
 Tryb podglądu opisuje plan bez tworzenia sondy ani zmian w świecie.
+
+## Zwykły świat
+
+W „Teleport do punktu” wybierz „Zwykły świat — bezpieczne lądowanie”.
+Nakładka wywołuje `nik tp GRACZ swiat`; wybór miejsca, walidacja i powrót
+pozostają w NIK. Podgląd nie tworzy sondy ani nie przenosi gracza.
