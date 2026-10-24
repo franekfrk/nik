@@ -40,6 +40,9 @@ nik_cmd_tp() {
     if (($# == 2)); then
         local target=${2,,} x y z dimension
         nik_id "$target"
+        if [[ $target == nether ]]; then
+            nik_tp_nether "$player"; return
+        fi
         if [[ $target == end ]]; then
             nik_tp_end "$player"; return
         elif [[ -v NIK_PLACES[$target] ]]; then

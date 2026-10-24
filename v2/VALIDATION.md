@@ -334,3 +334,20 @@ Dwa testy panelu sprawdzają udostępnienie celu wyłącznie w teleportach oraz
 podgląd przez oryginalny NIK. Łącznie: 156 testów Python, 242 Bats i 8 JavaScript.
 Implementację doboru podłoża i zmiany wymiaru sprawdzono w klasie Mojang
 SpreadPlayersCommand z cache używanej wersji 26.3.
+
+## Wydanie 2.11.0 — bezpieczny Nether
+
+Testy obejmują wbudowany cel, podgląd bez Dockera, podpowiedzi Tab, most panelu,
+listę bezpiecznych podłoży i dwa bloki powietrza, ponowną kontrolę tuż przy
+teleportacji, odrzucanie magmy i przeszkód, limit czterech prób samej sondy,
+zapis powrotu i pojedynczy teleport gracza. Symulowane są awarie utworzenia
+sondy, RCON, puste potwierdzenie ruchu, brak załadowania terenu oraz odzyskanie
+prywatnego zapisu chunka po nieudanym sprzątaniu. Cudzy wcześniejszy forceload
+pozostaje włączony; dowiązania i obcy zapis stanu są odrzucane.
+
+Na Paper 26.3 sprawdzono rzeczywistą sondę: wybór miejsca, bezpieczne podłoże,
+dwa bloki powietrza, dostępność po dwóch sekundach i sprzątanie chunka.
+W tym teście końcową teleportację gracza zastąpiono kontrolą tylko do odczytu.
+Nie zmieniano pozycji graczy. Zwykłe zagrożenia gry pozostają aktywne.
+
+Zakres wydania: 157 testów Python, 257 Bats i 8 JavaScript; Bash-n, ShellCheck oraz audyty danych i granic publicznej paczki.

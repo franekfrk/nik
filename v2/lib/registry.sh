@@ -52,7 +52,7 @@ nik_registry() {
     nik_register daj nik_cmd_give 0 'daj GRACZ ITEM [ILOŚĆ]' 'Daj przedmiot (1–2304 szt.).'
     nik_register encik nik_cmd_enchant 0 'encik GRACZ ITEM ZAKLĘCIE[:POZIOM]... | co' 'Daj nowy zaklęty przedmiot; zaklęcia po polsku lub angielsku.'
     nik_register wyposaz nik_cmd_equip 1 'wyposaz GRACZ [ZESTAW]' 'Nadpisz wskazane sloty zestawu; wymaga --potwierdz.'
-    nik_register tp nik_cmd_tp 0 'tp GRACZ end|CEL | GRACZ X Y Z' 'Teleport do miejsca, gracza lub współrzędnych.'
+    nik_register tp nik_cmd_tp 0 'tp GRACZ end|nether|CEL | GRACZ X Y Z' 'Teleport do miejsca, gracza lub współrzędnych.'
     nik_register dom nik_cmd_home 0 'dom GRACZ' 'Teleport do domu.'
     nik_register zamek nik_cmd_castle 0 'zamek GRACZ' 'Teleport do zamku.'
     nik_register dolacz nik_cmd_join 0 'dolacz GRACZ GRACZ' 'Teleport do drugiego gracza.'

@@ -8,6 +8,33 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.11.0 — również bezpieczny Nether
+
+```bash
+tp g1 nether
+powrot g1
+```
+
+Wbudowany cel `nether` działa z terminala i panelu przez tę samą komendę NIK.
+Sonda wybiera powierzchnię w okolicy X/Z 2–14, poniżej Y=120, a NIK dopuszcza
+wyłącznie sprawdzone, nieszkodliwe podłoże i dwa bloki powietrza. Magma, lawa,
+ogniska, ogień i dach Netheru nie są miejscem lądowania. Miejsce jest ponownie
+sprawdzane w tej samej komendzie, która przenosi gracza. Do czterech prób
+poszukiwania dotyczy sondy; gracz jest teleportowany najwyżej raz.
+
+Przy braku miejsca lub odpowiedzi serwera operacja jest przerywana. `powrot`
+zachowuje pozycję wyjściową, również jako punkt awaryjny przy niepewnym wyniku
+RCON. NIK nie zmienia terenu, trybu gry ani efektów gracza. Zagrożenia zwykłej
+gry, np. pobliskie potwory i późniejsze zmiany bloków, nadal obowiązują.
+Własny wpis `nether` w places.tsv ustępuje wbudowanemu celowi.
+
+NIK na czas sondowania ładuje jeden chunk Netheru (0,0), usuwa własną sondę
+i zwalnia dodane przez siebie ładowanie. Wcześniej wymuszonego chunka nie
+zwalnia. Sonda nie ma efektów i wygasa po 60 sekundach aktywnego czasu świata.
+Jeśli RCON uniemożliwi sprzątanie chunka, prywatny zapis
+`state/nether-landing.lease` pozostaje do odzyskania przez następne `tp GRACZ nether`.
+Nie usuwaj go ręcznie przed odzyskaniem połączenia. Układ bloków pozostaje bez zmian.
+
 ## NIK 2.10.0 — End jednym poleceniem
 
 ```bash

@@ -5,7 +5,7 @@
 NIK to przede wszystkim **modułowy projekt Bash z polskimi komendami do
 Minecraft Java**. Obsługuje przedmioty, zaklęcia, efekty, teleporty, tryby gry,
 zestawy, wiadomości i kopie świata. Terminal ma kolorowe listy i baner,
-uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.10.0**.
+uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.11.0**.
 
 Do projektu należy też **opcjonalny panel WWW/PWA NIK Mobile** — minecraftowa
 nakładka na oryginalny `nik.sh`. **Dziecko lub gracz może wpisywać polskie
@@ -330,3 +330,30 @@ Testy nie korzystają z produkcyjnego świata ani prywatnych ustawień.
 
 Pełne użycie: [README v2](v2/README.md). Zakres kontroli i ograniczenia:
 [VALIDATION.md](v2/VALIDATION.md).
+
+## NIK 2.11.0 — również bezpieczny Nether
+
+```bash
+tp g1 nether
+powrot g1
+```
+
+Wbudowany cel `nether` działa z terminala i panelu przez tę samą komendę NIK.
+Sonda wybiera powierzchnię w okolicy X/Z 2–14, poniżej Y=120, a NIK dopuszcza
+wyłącznie sprawdzone, nieszkodliwe podłoże i dwa bloki powietrza. Magma, lawa,
+ogniska, ogień i dach Netheru nie są miejscem lądowania. Miejsce jest ponownie
+sprawdzane w tej samej komendzie, która przenosi gracza. Do czterech prób
+poszukiwania dotyczy sondy; gracz jest teleportowany najwyżej raz.
+
+Przy braku miejsca lub odpowiedzi serwera operacja jest przerywana. `powrot`
+zachowuje pozycję wyjściową, również jako punkt awaryjny przy niepewnym wyniku
+RCON. NIK nie zmienia terenu, trybu gry ani efektów gracza. Zagrożenia zwykłej
+gry, np. pobliskie potwory i późniejsze zmiany bloków, nadal obowiązują.
+Własny wpis `nether` w places.tsv ustępuje wbudowanemu celowi.
+
+NIK na czas sondowania ładuje jeden chunk Netheru (0,0), usuwa własną sondę
+i zwalnia dodane przez siebie ładowanie. Wcześniej wymuszonego chunka nie
+zwalnia. Sonda nie ma efektów i wygasa po 60 sekundach aktywnego czasu świata.
+Jeśli RCON uniemożliwi sprzątanie chunka, prywatny zapis
+`state/nether-landing.lease` pozostaje do odzyskania przez następne `tp GRACZ nether`.
+Nie usuwaj go ręcznie przed odzyskaniem połączenia. Układ bloków pozostaje bez zmian.

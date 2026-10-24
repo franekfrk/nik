@@ -28,9 +28,13 @@ nik_response_failed() {
 nik_rcon() {
     local command=$1 output plain rc=0 noop=0 silent=0 result=OK
     NIK_RCON_UNCERTAIN=0
+    NIK_RCON_MATCHED=1
     NIK_RCON_ERROR_RESPONSE=''
     local allow_missing=${2:-0}
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
+    if [[ $allow_missing == nether_probe ]]; then
+        [[ $command == 'execute in minecraft:the_nether if loaded 0 64 0' || $command =~ ^execute\ as\ [0-9a-f-]{36}\ at\ @s\ if\ dimension\ minecraft:the_nether\ if\ entity\ @s\[type=minecraft:area_effect_cloud,tag=nik_nether_[0-9a-f]{32}\]\ if\ block\ ~\ ~-1\ ~\ minecraft:[a-z_]+\ if\ block\ ~\ ~\ ~\ minecraft:air\ if\ block\ ~\ ~1\ ~\ minecraft:air\ run\ data\ get\ entity\ @s\ Pos$ ]] || nik_die 'Błędna komenda kontroli lądowania.'
+    fi
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
     # Abort before mutation when audit logging is unavailable.
     if [[ ${NIK_PROGRESS_GENERIC:-1} == 1 ]]; then nik_progress 'Łączę z Minecraftem i wykonuję kolejny krok.'; fi
@@ -49,6 +53,15 @@ nik_rcon() {
     fi
     if [[ $allow_missing == 1 && $command =~ ^data\ get\ entity\ [.a-zA-Z0-9_]+\ ([^[:space:]]+)$ && $plain == "Found no elements matching ${BASH_REMATCH[1]}" ]]; then
         noop=1; silent=1
+    fi
+    # Only the read-only Nether landing probe may have an expected false condition.
+    # A transport error still aborts; never permit silent mutation failures here.
+    if [[ $allow_missing == nether_probe ]]; then
+        if [[ -z ${plain//[[:space:]]/} || $plain == 'Test failed' ]]; then
+            noop=1; silent=1; NIK_RCON_MATCHED=0
+        elif [[ $plain != *' has the following entity data: ['* && ! ( $command == 'execute in minecraft:the_nether if loaded 0 64 0' && $plain == 'Test passed' ) ]]; then
+            rc=1
+        fi
     fi
     if [[ $command == 'effect clear '* ]] && [[ $plain == "Target doesn't have the requested effect" || $plain == 'Target has no effects to remove' ]]; then
         noop=1
