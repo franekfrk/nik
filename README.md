@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.5.1**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.6.0**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -38,6 +38,18 @@ Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
 z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
 pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
 Niestandardowe datapacki mogą wymagać osobnych zmian.
+
+## NIK Mobile — panel i PWA, nowe w 2.6
+
+Minecraftowy panel na telefon i komputer: wybór gracza, duże kafelki, wyszukiwarka
+przedmiotów i stworzeń, ilości, zaklęcia, efekty, teleporty, zadania i wiadomości
+od Taty. Uruchamia obecny `nik.sh` z tą samą prywatną konfiguracją.
+
+Panel działa jako usługa użytkownika systemd na lokalnym porcie 6767; prywatny
+HTTPS i prawidłowy certyfikat zapewnia Tailscale Serve. Można zainstalować PWA
+z przeglądarki telefonu. Oprawa działa z cache, a polecenia wymagają połączenia
+z serwerem i nie są odtwarzane offline. Hasło, cookie i CSRF chronią dostęp.
+Szczegóły instalacji i obsługi: [panel/README.md](v2/panel/README.md).
 
 ## Stabilizacja 2.5.1
 

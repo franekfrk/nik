@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111e17"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="description" content="Twój minecraftowy pilot. Przedmioty, przygody i wiadomości od Taty."><title>NIK — Twój świat w zasięgu ręki</title><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body>
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+<symbol id="i-heart" viewBox="0 0 16 16"><path d="M2 3h4v2h4V3h4v2h2v5h-2v2h-2v2h-2v2H6v-2H4v-2H2v-2H0V5h2z"/></symbol>
+<symbol id="i-diamond" viewBox="0 0 16 16"><path d="M3 1h10v2h2v6h-2v2h-2v2H9v2H7v-2H5v-2H3V9H1V3h2z"/><path class="cut" d="M4 4h2v2H4zm6 0h2v2h-2zM7 8h2v4H7z"/></symbol>
+<symbol id="i-home" viewBox="0 0 16 16"><path d="M6 0h4v2h2v2h2v2h2v3h-2v7H9v-5H7v5H2V9H0V6h2V4h2V2h2z"/></symbol>
+<symbol id="i-cow" viewBox="0 0 16 16"><path d="M0 0h3v3h10V0h3v6h-2v8h-2v2H4v-2H2V6H0z"/><path class="cut" d="M4 6h2v2H4zm6 0h2v2h-2zM5 11h6v2H5z"/></symbol>
+<symbol id="i-compass" viewBox="0 0 16 16"><path d="M4 0h8v2h2v2h2v8h-2v2h-2v2H4v-2H2v-2H0V4h2V2h2z"/><path class="cut" d="M9 3h3l-3 6-5 4H2l5-7z"/></symbol>
+<symbol id="i-sword" viewBox="0 0 16 16"><path d="M10 0h6v6h-2v2h-2v2h-2v2h2v2H8v2H6v-2H4v2H0v-4h2v-2h2V8H2V6h2l2 2 2-2V4h2z"/></symbol>
+<symbol id="i-book" viewBox="0 0 16 16"><path d="M0 1h6v1h4V1h6v13h-6v1H6v-1H0z"/><path class="cut" d="M7 3h2v10H7zM2 4h3v1H2zm9 0h3v1h-3zM2 7h3v1H2zm9 0h3v1h-3z"/></symbol>
+<symbol id="i-gift" viewBox="0 0 16 16"><path d="M3 0h3v2h4V0h3v4h3v4h-1v8H1V8H0V4h3z"/><path class="cut" d="M7 4h2v12H7zM1 7h14v2H1z"/></symbol>
+<symbol id="i-spark" viewBox="0 0 16 16"><path d="M7 0h2v5h2v2h5v2h-5v2H9v5H7v-5H5V9H0V7h5V5h2z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 16 16"><path d="M0 1h16v11H8v2H5v2H3v-4H0z"/><path class="cut" d="M3 4h10v2H3zm0 4h7v1H3z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 16 16"><path d="M7 0h2v3H7zm0 13h2v3H7zM0 7h3v2H0zm13 0h3v2h-3zM2 2h2v2H2zm10 0h2v2h-2zM2 12h2v2H2zm10 0h2v2h-2zM5 4h6v1h1v6h-1v1H5v-1H4V5h1z"/></symbol>
+<symbol id="i-back" viewBox="0 0 16 16"><path d="M6 2h3v3H6v2h8v2h2v5h-3v-4H6v2H3V9H0V6h3V3h3z"/></symbol>
+<symbol id="i-tool" viewBox="0 0 16 16"><path d="M8 0h6v2h2v4h-2V4h-4v4H8v2H6v2H4v2H2v2H0v-4h2v-2h2V8h2V6h2z"/></symbol>
+<symbol id="i-bag" viewBox="0 0 16 16"><path d="M5 0h6v3h3v2h2v11H0V5h2V3h3z"/><path class="cut" d="M6 2h4v2H6zM3 9h10v5H3zM7 5h2v2H7z"/></symbol>
+<symbol id="i-grid" viewBox="0 0 16 16"><path d="M0 0h6v6H0zm10 0h6v6h-6zM0 10h6v6H0zm10 10h6v6h-6z"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16"><path d="M13 2h3v3h-2v2h-2v2h-2v2H8v2H5v-2H3V9H1V6h3v2h2v2h1V8h2V6h2V4h2z"/></symbol>
+<symbol id="i-moon" viewBox="0 0 16 16"><path d="M4 0h7v2H8v2H6v6h2v2h3v1h4v1h-3v2H4v-2H2v-2H0V4h2V2h2z"/></symbol>
+</defs></svg>
+<div id="offline" class="offline" hidden>Brak połączenia. Sprawdź internet i Tailscale. Komendy nie są wysyłane.</div>
+<section id="login-view" class="login-view">
+ <div class="login-art" aria-hidden="true"><div class="login-stars"></div><img src="/terrain.svg" alt=""></div>
+ <div class="login-content"><a class="brand" href="/"><img src="/icon.svg" alt="" width="44" height="44"><span>NIK<span class="brand-sub">MOBILE</span></span></a>
+ <span class="eyebrow">TWOJE CENTRUM DOWODZENIA</span><h1>Wielkie przygody.<br>W zasięgu ręki<span class="emerald">.</span></h1><p class="login-intro">Od diamentów po dobre słowo od Taty.<br>Twój minecraftowy świat, teraz pod palcem.</p>
+ <form id="login-form" class="login-card"><label for="password">Klucz do Twojego świata</label><div class="password-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Wpisz hasło panelu" required maxlength="512"><button id="show-password" type="button" class="text-button" aria-label="Pokaż hasło">Pokaż</button></div><button type="submit" class="primary full">Wejdź do NIK <span aria-hidden="true">→</span></button><p id="login-error" class="form-error" role="alert"></p><div class="private-note"><span class="status-dot"></span> Twój prywatny panel</div></form>
+ <p class="signature">Dla Franka <span>♥</span> Tata</p></div>
+</section>
+<div id="app-view" class="app-view" hidden>
+ <aside class="sidebar"><a class="brand" href="/"><img src="/icon.svg" alt="" width="42" height="42"><span>NIK<span class="brand-sub">MOBILE</span></span></a><div class="sidebar-divider"></div><span class="eyebrow">EKWIPUNEK TATY</span><nav id="desktop-nav" aria-label="Główne menu"></nav><div class="sidebar-bottom"><button id="install-desktop" class="install-button"><span>↧</span> Zainstaluj aplikację</button><button id="logout" class="text-button">Wyloguj się ↗</button><p class="signature">Dla Franka <span>♥</span> Tata</p><span class="version">NIK MOBILE · 1.0</span></div></aside>
+ <div class="workspace"><header class="topbar"><a class="brand mobile-brand" href="/"><img src="/icon.svg" alt="" width="34" height="34"><span>NIK</span></a><div class="breadcrumb">TWÓJ ŚWIAT <span>/</span> <strong id="current-section">Pulpit</strong></div><div class="topbar-right"><button id="preview-toggle" class="preview-toggle" aria-pressed="false"><span class="toggle-track"></span>Podgląd</button><button id="connection" class="connection" title="Sprawdź połączenie"><span class="status-dot muted-dot"></span><span>Sprawdź serwer</span></button></div></header>
+ <main id="main" class="main" tabindex="-1"><section class="hero"><div class="hero-copy"><span class="eyebrow">DOBRZE CIĘ WIDZIEĆ, TATO</span><h1>Co dziś<br><span>wyczarujemy?</span></h1><p>Małe kliknięcie. Wielka radość w świecie.</p><button id="hero-action" class="primary">Daj coś fajnego <span>→</span></button></div><img class="hero-terrain" src="/terrain.svg" alt="Pikselowa wyspa z drzewem, domkiem i kryształami"></section>
+ <section class="player-section" aria-label="Wybierz gracza"><div><span class="eyebrow">DLA KOGO DZIAŁAMY?</span><h2>Wybierz gracza</h2></div><div id="players" class="players"></div></section>
+ <section id="content" class="content"></section>
+ <section class="activity"><div class="section-heading"><div><span class="eyebrow">MAŁE WIELKIE RZECZY</span><h2>Ostatnie działania</h2></div><span class="session-tag">W TEJ SESJI</span></div><div id="activity-list" class="activity-list"><p class="empty-state">Tutaj pojawią się Wasze kolejne przygody.</p></div></section>
+ <footer class="page-footer"><span>Zrobione z sercem. Do wspólnego grania.</span><span class="signature">Dla Franka <span>♥</span> Tata</span></footer>
+ </main></div>
+ <nav id="mobile-nav" class="mobile-nav" aria-label="Menu telefonu"></nav>
+</div>
+<dialog id="action-dialog" class="action-dialog" aria-labelledby="dialog-title"><form id="action-form"><div class="dialog-heading"><div id="dialog-icon" class="dialog-icon"></div><button type="button" class="close-button" id="close-dialog" aria-label="Zamknij">×</button></div><span id="dialog-category" class="eyebrow"></span><h2 id="dialog-title"></h2><p id="dialog-description" class="dialog-description"></p><div id="dialog-fields"></div><div id="danger-confirm" class="danger-confirm" hidden><label><input type="checkbox" id="confirm-checkbox"> Potwierdzam usunięcie wszystkich efektów tego gracza.</label></div><div class="dialog-bottom"><span id="dialog-player" class="dialog-player"></span><button type="submit" id="execute-button" class="primary">Wykonaj <span>→</span></button></div><p id="action-error" class="form-error" role="alert"></p></form></dialog>
+<dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title"><button id="close-result" class="close-button" aria-label="Zamknij wynik">×</button><div id="result-symbol" class="result-symbol"></div><span id="result-eyebrow" class="eyebrow"></span><h2 id="result-title"></h2><p id="result-message"></p><pre id="result-output" class="result-output" hidden></pre><button id="result-details" class="text-button" hidden>Pokaż szczegóły</button><button id="cancel-job" class="secondary" hidden>Zatrzymaj</button><button id="result-done" class="primary full">Wracam do przygody</button></dialog>
+<dialog id="install-dialog" class="install-dialog"><button id="close-install" class="close-button" aria-label="Zamknij">×</button><img src="/icon.svg" alt="" width="64" height="64"><span class="eyebrow">NIK ZAWSZE POD RĘKĄ</span><h2>Twój nowy<br>przycisk do przygód.</h2><p id="install-description">W menu przeglądarki wybierz „Zainstaluj aplikację” lub „Dodaj do ekranu głównego”. Na iPhonie otwórz panel w Safari i wybierz Udostępnij → Do ekranu początkowego.</p><button id="install-now" class="primary full" hidden>Zainstaluj NIK</button><button id="install-ok" class="secondary full">Rozumiem</button></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body></html>

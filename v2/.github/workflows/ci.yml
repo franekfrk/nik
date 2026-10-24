@@ -9,4 +9,8 @@ jobs:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y shellcheck bats
       - run: python3 tools/audit-project.py --git
+      - name: JavaScript syntax
+        run: |
+          node --check panel/static/app.js
+          node --check panel/static/sw.js
       - run: bash tests/check.sh

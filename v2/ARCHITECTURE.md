@@ -57,3 +57,11 @@ testy Python oraz Bats. CI wykonuje ten sam zestaw na push i pull_request.
 Nowa komenda wymaga rejestracji, walidacji, pomocy i testów ścieżki błędu.
 Nowy plik wydania trzeba świadomie dodać do `tools/public-files.json`.
 Testy parsera na serwerze nie zastępują oceny wyglądu w kliencie gry.
+
+## NIK Mobile
+
+`panel/server.py` odpowiada za prywatny HTTP, sesje i kolejkę, a `panel/bridge.py`
+za dopuszczone schematy żądań. Każda czynność uruchamia istniejący `nik.sh` przez
+Popen z listą argumentów; nie omija rejestru ani nie implementuje ponownie RCON.
+`panel/static` jest oprawą PWA. HTTPS kończy się w Tailscale Serve, a backend
+domyślnie przyjmuje loopback, opcjonalnie konkretny prywatny IPv4 dla HTTP LAN. Hasła/hash/origins należą do prywatnego configu.

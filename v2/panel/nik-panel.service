@@ -1,0 +1,19 @@
+[Unit]
+Description=NIK Mobile — prywatny panel Minecraft
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.nik
+ExecStart=/usr/bin/python3 %h/.nik/panel/server.py --config %h/.nik/config/panel.json
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=8
+KillMode=control-group
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

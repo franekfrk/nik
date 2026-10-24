@@ -24,6 +24,14 @@ Jawny manifest paczki i testy prywatności chronią przed przypadkowym dołącze
 prywatnych plików. Szczegóły: [architektura](ARCHITECTURE.md) i
 [polityka prywatności i bezpieczeństwa](SECURITY.md).
 
+## Panel NIK Mobile — nowe w 2.6
+
+Minecraftowy panel w przeglądarce, zaprojektowany na telefon: wybór gracza,
+duże kafelki, wyszukiwanie przedmiotów/stworzeń, ilości, zaklęcia, efekty,
+teleporty, zadania i wiadomości od Taty. Uruchamia istniejący `nik.sh` z prywatną
+konfiguracją. Obsługuje PWA i prywatny HTTPS przez Tailscale Serve na porcie 6767.
+Instrukcja: [panel/README.md](panel/README.md).
+
 ## Nowe w 2.5 — menu i wspólna zabawa
 
 ```bash

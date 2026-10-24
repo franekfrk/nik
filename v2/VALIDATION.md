@@ -222,3 +222,25 @@ Dodatkowo pięć testów potwierdza opcjonalną ilość przywoływanych stworze�
 brak ilości oznacza jedno, liczba jest wykonywana dokładnie (w tym wiodące zera),
 błędna ilość nie wywołuje gry, bossy zachowują potwierdzenie, błąd zatrzymuje
 sekwencję, a lista i Tab zachowują poprawne argumenty.
+
+## NIK Mobile / wydanie 2.6
+
+Dodano 23 testy panelu: adaptery i walidację wszystkich czynności, opcjonalne ilości,
+bezpieczne argumenty dla prawdziwego nik.sh, logowanie, rate limit, cookie Secure,
+Host/Origin, CSRF, idempotencję zleceń, statusy wyjścia procesu, izolację wyników
+sesji, wylogowanie, CSP, brak dostępu do prywatnych ścieżek oraz zasoby PWA.
+Wszystkie czynności sprawdzono z prawdziwym nik.sh w podglądzie i atrapą Dockera.
+Łącznie: 229 testów Bats i 81 testów Python. JavaScript ma kontrolę składni w CI.
+
+Widok panelu sprawdzono w przeglądarce przy szerokości 390 px oraz na komputerze.
+Formularz przywołania wygenerował dokładnie sześć komend w podglądzie, bez
+modyfikacji świata. Zasoby oprawy działają z cache service workera; API nie jest
+zapisywane i nie ma odtwarzania komend offline. Instalacja na fizycznym telefonie
+wymaga działania użytkownika w przeglądarce; nie jest symulowana testem backendu.
+
+Na wdrożeniu sprawdzono rzeczywisty HTTPS, pełną weryfikację łańcucha i nazwy
+certyfikatu, TLS 1.3, logowanie i metadane prywatnej konfiguracji, podglądy
+1/3/12 stworzeń, idempotencję oraz rzeczywisty nik status przez usługę.
+Testy nie wysłały wiadomości do graczy ani nie przywołały stworzeń.
+Usługa użytkownika jest włączona i ma linger, a Tailscale Serve obsługuje HTTPS.
+Hasła/hash/origins i pozostały prywatny config są wykluczone z publicznego wydania.

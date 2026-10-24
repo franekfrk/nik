@@ -36,3 +36,14 @@ prywatnym kanałem ustalonym poza publicznym repozytorium.
 
 Właściciel repozytorium może dodatkowo wymagać zielonego checka `test` przez
 reguły ochrony gałęzi. Sam plik workflow nie konfiguruje tych reguł GitHuba.
+
+## Panel Mobile
+
+Panel jest prywatnym interfejsem administratora, z uprawnieniami użytkownika NIK.
+Korzysta z HTTPS Tailscale, hasła PBKDF2, cookie HttpOnly/Secure/SameSite, kontroli
+Host/Origin i CSRF. Ogranicza czynności do jawnych adapterów; nie udostępnia konsoli.
+Service worker zapisuje tylko publiczne zasoby oprawy. Nie zapisuje API i nie
+odtwarza poleceń offline. Hasło początkowe oraz panel.json należą do config/
+i nigdy do publicznego repo ani ZIP-a. Szczegóły: panel/README.md.
+
+Opcjonalny dostęp LAN przez wskazany prywatny IPv4 używa HTTP; cookie ma wtedy HttpOnly/SameSite, bez Secure. Używaj go wyłącznie w zaufanej sieci. HTTPS/PWA pozostaje dostępne przez Tailscale.
