@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 import bridge
+from history import History,FIELDS
 
 STATIC=Path(__file__).resolve().parent/'static'
 COOKIE='nik_session'
@@ -25,6 +26,7 @@ class App:
   self.origins=config['origins'];self.hosts={urlsplit(u).netloc for u in self.origins}
   if not self.origins or any(urlsplit(u).scheme not in {'http','https'} or urlsplit(u).path for u in self.origins):raise ValueError('Nieprawidłowy adres panelu.')
   if not 100000<=config['password']['rounds']<=2000000:raise ValueError('Nieprawidłowy hash hasła.')
+  self.history=History(self.root)
   self.lock=threading.RLock();self.sessions={};self.failures={};self.jobs={};self.keys={};self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.slots=threading.BoundedSemaphore(6)
  def login(self,password,ip):
   now=time.monotonic()
@@ -49,7 +51,7 @@ class App:
    if not s or s['expires']<time.monotonic():self.sessions.pop(key,None);raise HTTPError(401,'Zaloguj się do panelu.')
    return key,s
  def job(self,owner,data,key):
-  bridge.build(data)
+  args,_,_=bridge.build(data)
   if not isinstance(key,str) or not re.fullmatch('[a-zA-Z0-9_-]{16,80}',key):raise bridge.InputError('Nieprawidłowy identyfikator operacji.')
   digest=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest()
   with self.lock:
@@ -62,9 +64,18 @@ class App:
     return existing
    if len(self.jobs)>=200 or not self.slots.acquire(blocking=False):raise HTTPError(429,'Kolejka jest pełna. Poczekaj na zakończenie czynności.')
    id=secrets.token_urlsafe(18)
-   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False)}
-   self.keys[owner,key]=id
-   self.pool.submit(self.run_job,id,dict(data))
+   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False),'action':data['action'],'player':data.get('player','') if data['action'] not in bridge.GLOBAL else '', 'timestamp':time.time(),'command':args[0]}
+   try:
+    self.history.put(self.jobs[id])
+    self.keys[owner,key]=id
+    self.pool.submit(self.run_job,id,dict(data))
+   except Exception:
+    try:
+     self.jobs[id].update(state='error',code=None,output='Komenda nie została uruchomiona: nie udało się przygotować kolejki.')
+     self.history.put(self.jobs[id])
+    except Exception:pass
+    self.jobs.pop(id,None);self.keys.pop((owner,key),None);self.slots.release()
+    raise HTTPError(503,'Nie udało się zapisać operacji. Komenda nie została uruchomiona.')
    return id
  def run_job(self,id,data):
   job=self.jobs[id]
@@ -72,26 +83,36 @@ class App:
    with self.lock:
     if job['state']=='cancelled':return
     job['state']='running'
+    self.history.put(job)
    with tempfile.TemporaryFile() as out:
     process=subprocess.Popen(bridge.argv(self.root,self.nik_config,data),env=bridge.environment(self.root),stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT,start_new_session=True)
     with self.lock:
      job['process']=process
      if job['state']=='cancelled':os.killpg(process.pid,signal.SIGTERM)
-    try:code=process.wait(timeout=180)
+    try:code=process.wait(timeout=2100 if data['action']=='backup' else 180)
     except subprocess.TimeoutExpired:
-     self.stop(process);code=124
+     self.stop(process,180 if data['action']=='backup' else 2);code=124
     out.seek(0);output=bridge.clean(out.read(131072).decode(errors='replace'))
     with self.lock:
-     job.pop('process',None);job['code']=code;job['output']=output
+     job.pop('process',None);job['code']=code
+     if job['state']!='cancelled':job['output']=output
      if job['state']!='cancelled':job['state']='success' if code==0 else 'error'
      if code==124:job['output']+='\nPrzekroczono czas panelu. Część operacji mogła zostać wykonana; nie ponawiaj automatycznie.'
+     self.history.put(job)
   except Exception as error:
-   with self.lock:job.update(state='error',code=1,output='Panel nie mógł uruchomić NIK. Sprawdź usługę na serwerze.');job.pop('process',None)
+   with self.lock:job.update(state='error',code=1,output=job['output']+'\nPanel napotkał błąd obsługi operacji. Sprawdź wynik i stan gry przed ponowieniem; wcześniejsze kroki mogły zostać wykonane.');job.pop('process',None)
    print('Błąd uruchomienia zadania: '+type(error).__name__,flush=True)
-  finally:self.slots.release()
- def stop(self,process):
+  finally:
+   try:
+    with self.lock:self.history.put(job)
+   except Exception as error:
+    with self.lock:
+     job.update(state='error',code=None,output=job['output']+'\nNie udało się zapisać wyniku na dysku. Ten wynik może zniknąć po restarcie panelu. Sprawdź miejsce na dysku i uprawnienia historii.')
+    print('Nie zapisano wyniku historii: '+type(error).__name__,flush=True)
+   finally:self.slots.release()
+ def stop(self,process,grace=2):
   if process.poll() is None:
-   try:os.killpg(process.pid,signal.SIGTERM);process.wait(timeout=2)
+   try:os.killpg(process.pid,signal.SIGTERM);process.wait(timeout=grace)
    except subprocess.TimeoutExpired:
     try:os.killpg(process.pid,signal.SIGKILL)
     except ProcessLookupError:pass
@@ -101,13 +122,25 @@ class App:
   with self.lock:
    j=self.jobs.get(id)
    if not j or j['owner']!=owner:raise HTTPError(404,'Nie znaleziono operacji w tej sesji.')
-   return {k:j[k] for k in ('id','state','output','code','label','preview')}
+   return {k:j[k] for k in ('id','state','output','code','label','preview','action','player','timestamp')}
+ def history_view(self,id):
+  with self.lock:
+   if id in self.jobs:return {key:self.jobs[id][key] for key in FIELDS}
+  return self.history.get(id)
+ def history_list(self):
+  records=self.history.list()
+  with self.lock:
+   for record in records:
+    if record['id'] in self.jobs:record.update({key:self.jobs[record['id']][key] for key in FIELDS if key!='output'})
+  return records
  def cancel(self,id,owner):
   self.view(id,owner)
   with self.lock:
    j=self.jobs[id]
    if j['state'] not in {'running','queued'}:return
+   if j['action']=='backup' and j['state']=='running':raise HTTPError(409,'Trwa kopia świata. Poczekaj na bezpieczne zakończenie i uruchomienie serwera.')
    j['state']='cancelled';j['output']='Zatrzymano oczekiwanie i proces NIK. Wcześniejsze kroki mogły zostać wykonane.';p=j.get('process')
+   self.history.put(j)
   if p:self.stop(p)
 
 class Server(ThreadingHTTPServer):
@@ -168,6 +201,19 @@ class Handler(BaseHTTPRequestHandler):
    if path=='/api/logout':
     with app.lock:app.sessions.pop(owner,None)
     self.response(200,{'ok':True},cookie=f'{COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'+('; Secure' if self.secure else ''));return
+   if path=='/api/favorites':
+    name=bridge.text(data,'name',limit=40);request=data.get('request')
+    if not isinstance(request,dict):raise bridge.InputError('Brak ustawień ulubionej akcji.')
+    allowed={'action','player','item','creature','count','enchantments','effect','duration','level','place','name','text','seconds','reward','weather','mode','kit'}
+    request={k:v for k,v in request.items() if k in allowed};bridge.build({**request,'preview':True})
+    check=subprocess.run(bridge.argv(app.root,app.nik_config,{**request,'preview':True}),env=bridge.environment(app.root),capture_output=True,text=True,timeout=20)
+    if check.returncode:raise bridge.InputError('NIK nie zaakceptował skrótu: '+bridge.clean(check.stdout+check.stderr)[-2000:])
+    id=secrets.token_urlsafe(18)
+    try:app.history.save_favorite(id,name,request)
+    except ValueError as error:raise bridge.InputError(str(error))
+    self.response(201,{'id':id});return
+   if re.fullmatch('/api/favorites/[A-Za-z0-9_-]+/delete',path):
+    app.history.delete_favorite(path.split('/')[3]);self.response(200,{'ok':True});return
    if path=='/api/jobs':
     id=app.job(owner,data.get('request'),data.get('key'));self.response(202,{'id':id});return
    if re.fullmatch('/api/jobs/[A-Za-z0-9_-]+/cancel',path):app.cancel(path.split('/')[3],owner);self.response(200,{'ok':True});return
@@ -176,6 +222,14 @@ class Handler(BaseHTTPRequestHandler):
    _,s=self.authenticated();self.response(200,{'csrf':s['csrf']});return
   if path=='/api/metadata':
    self.authenticated();self.response(200,bridge.metadata(app.root,app.nik_config));return
+  if path=='/api/favorites':
+   self.authenticated();self.response(200,{'entries':app.history.favorites()});return
+  if path=='/api/history':
+   self.authenticated();self.response(200,{'entries':app.history_list(),'limit':100});return
+  if re.fullmatch('/api/history/[A-Za-z0-9_-]+',path):
+   self.authenticated();record=app.history_view(path.rsplit('/',1)[-1])
+   if record is None:raise HTTPError(404,'Nie znaleziono wyniku w historii.')
+   self.response(200,record);return
   if path.startswith('/api/jobs/key/'):
    owner,_=self.authenticated();key=path.rsplit('/',1)[-1]
    with app.lock:id=app.keys.get((owner,key))

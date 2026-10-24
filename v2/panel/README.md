@@ -1,4 +1,9 @@
-# NIK Mobile 1.0
+# NIK Mobile 1.3 — nakładka WWW/PWA na NIK
+
+NIK jest projektem opartym na Bashu, z polskimi komendami do Minecrafta.
+Dziecko lub gracz może korzystać z terminala — np. `daj g1 diament 16` — albo
+z tego panelu WWW: wybiera gracza, przedmiot i ilość, a następnie naciska
+„Wykonaj”. Na telefonie panel można zainstalować jako PWA przez HTTPS.
 
 Minecraftowy panel na telefon i komputer. Wykonuje istniejący `nik.sh` jako proces
 Bash z tablicą argumentów, bez shell=True/eval i bez osobnego silnika komend.
@@ -53,13 +58,17 @@ wymaga dodatkowego potwierdzenia w formularzu.
 Czynności trafiają do jednej kolejki (do sześciu oczekujących/wykonywanych).
 Można pozostawić operację w tle i sprawdzić wynik. „Zatrzymaj” kończy proces NIK,
 ale nie cofa kroków wykonanych już w Minecraft. Limit jednej operacji panelu wynosi
-180 sekund. Złożone kopie/przywracanie świata, restart serwera i dowolna konsola
-nie są udostępnione w tej wersji panelu; pozostają dostępne w CLI.
+180 sekund; kopia świata ma osobny limit 35 minut i czas na wznowienie serwera.
+Tworzenie kopii wymaga potwierdzenia przerwy w grze. Przywracanie świata, restart
+serwera i dowolna konsola pozostają dostępne w CLI. Trwającej kopii nie można
+anulować z panelu; kolejka czeka na bezpieczne zakończenie i ponowne uruchomienie
+kontenera. Jednostka systemd daje procesom 180 sekund na zamknięcie.
 
 Identyfikator żądania zapobiega powtórzeniu tego samego zlecenia w sesji.
 Po błędzie sieci panel sprawdza wynik zamiast automatycznie wysyłać komendę ponownie.
-Restart usługi usuwa pamięć sesji/kolejki/wyników; wymaga ponownego logowania.
-Historia na ekranie jest tylko bieżącą sesją, a pełny prywatny log operacji prowadzi NIK.
+Restart usługi wymaga ponownego logowania, ale zachowuje historię i wyniki.
+Niedokończone operacje są oznaczane jako przerwane z nieznanym wynikiem; panel
+nie ponawia ich automatycznie. Sprawdź stan gry przed ręcznym powtórzeniem.
 
 ## PWA
 
@@ -86,7 +95,9 @@ journalctl --user -u nik-panel -n 50
 Usługa działa z uprawnieniami właściciela NIK i jego dostępem do Dockera.
 Cookie ma HttpOnly/SameSite=Strict/Secure przy HTTPS. Żądania zmieniające stan
 wymagają logowania, prawidłowego Host/Origin, JSON oraz tokenu CSRF.
-Błędne logowania są ograniczane, a wyniki operacji należą do konkretnej sesji.
+Błędne logowania są ograniczane. Historia i wyniki są wspólne dla zalogowanych
+administratorów używających jednego hasła panelu. Anulowanie czynności i klucze
+żądań pozostają przypisane do sesji, która zleciła operację.
 To panel dla zaufanego administratora w prywatnej sieci, nie usługa wieloużytkownikowa.
 
 Testy: `python3 -m unittest discover -s tests -p test_panel.py` z katalogu v2.
@@ -116,7 +127,55 @@ wybranego przedmiotu. Dwa atlasy PNG są dostarczane z panelem i cache PWA.
 Nie potrzeba zewnętrznego CDN ani wysyłania zapytań o obrazki do Internetu.
 Pochodzenie i autorstwo: [ASSETS.md](ASSETS.md).
 
-W sekcji **Ostatnie działania** kliknij dowolny wpis, aby ponownie otworzyć wynik,
-również po użyciu „Zostaw w tle”. Wyniki ostatnich ośmiu działań są przechowywane
-w pamięci otwartej strony i znikają po jej odświeżeniu lub wylogowaniu. Nie trafiają
-do cache PWA ani localStorage.
+## Trwała historia (Mobile 1.2)
+
+W sekcji **Ostatnie działania** kliknij wpis, aby otworzyć zapisany wynik, również
+po użyciu „Zostaw w tle”, odświeżeniu, ponownym logowaniu lub restarcie panelu.
+Historia obejmuje ostatnie 100 działań z datą, graczem, statusem i wynikiem.
+Przycisk „Pokaż starsze działania” rozwija kolejne wpisy, a „Odśwież” pobiera
+historię z innych urządzeń. Powrót do karty również odświeża listę.
+
+SQLite z biblioteki standardowej Pythona przechowuje historię lokalnie w
+`NIK_ROOT/state/panel/history.sqlite3` (plik 600, katalog panel 700).
+Nie wymaga osobnego serwera bazy. Wynik jest ograniczony do 128 KiB, jak wcześniej.
+Operacje aktywne są zachowywane do zakończenia nawet przy przekroczeniu limitu
+100 wpisów. Najstarsze zakończone wpisy są usuwane po przekroczeniu limitu.
+Błąd zapisu nowego zlecenia blokuje wykonanie komendy; uszkodzona baza nie jest
+kasowana ani zastępowana pustą bazą. Jeżeli proces zniknie przed zapisaniem wyniku,
+po restarcie zobaczysz ostrzeżenie o niepewnym wyniku zamiast fałszywego sukcesu.
+
+Historia zawiera prywatne wyniki, np. plecaki i współrzędne. Jest dostępna tylko
+po logowaniu, wspólna dla telefonu i komputera administratora. Nie zawiera haseł,
+cookies ani kluczy sesji. Katalog `state` jest wykluczony z publicznych paczek
+oraz Gita. API historii nie trafia do cache PWA ani localStorage. Kopia prywatnej
+konfiguracji nie obejmuje historii: jej kopię wykonuj przy zatrzymanym panelu,
+kopiując `state/panel`. Restart panelu nie odtwarza ani nie ponawia komend.
+
+
+## Ulubione, kolejka i stan świata (Mobile 1.3)
+
+- **Ulubione:** w formularzu akcji ustaw gracza, parametry i nazwę, następnie
+  „Zapisz w ulubionych”. NIK sprawdza skrót w podglądzie. Maksymalnie 24 skróty
+  są zapisane prywatnie obok historii i dostępne na wszystkich urządzeniach po
+  logowaniu. Kliknięcie otwiera formularz, zachowując przedmiot, ilość, zaklęcia
+  i pozostałe parametry. Nie zapisuje zgody na działania wymagające potwierdzenia.
+- **Historia:** filtruj po graczu, polskiej komendzie i lokalnej dacie. Wpisy
+  mają osobne etykiety oczekiwania, pracy, sukcesu i błędu. Kliknięcie otwiera wynik.
+- **Kolejka:** wspólna dla zalogowanych urządzeń; jeden proces NIK wykonuje akcje
+  po kolei. Panel odświeża aktywne wpisy co 5 sekund, bez ponawiania komend.
+- **Gracze online:** `nik stan lista json` odczytuje listę online, zdrowie w HP,
+  jedzenie, tryb gry, pozycję i wymiar. Karty pokazują czas ostatniego odczytu.
+  „Odśwież” zleca nowy odczyt przez NIK. Wyjście gracza podczas odczytu daje
+  jawny komunikat zamiast wymyślonych wartości. Pokazywani są gracze z konfiguracji.
+- **Kopie świata:** karta Świat pokazuje datę i rozmiar ostatniej kopii oraz
+  ostatnie pięć archiwów z `nik kopia dane`. Przycisk wykonuje `nik kopia utworz`
+  po potwierdzeniu krótkiego zatrzymania Minecrafta. Nie daje dostępu do dowolnych
+  plików ani przywracania świata. Utworzone archiwa pozostają w `world-backups`.
+- **Zestawy:** Ekwipunek udostępnia własne `nik zestaw GRACZ NAZWA` oraz gotowe
+  `nik wyposaz GRACZ NAZWA`. Wyposażenie zastępuje sloty i wymaga potwierdzenia.
+
+Panel nie wykonuje bezpośrednio Docker/RCON ani nie czyta plików graczy/świata.
+Wszystkie dane Minecrafta i kopii pochodzą z komend NIK. SQLite przechowuje tylko
+stan interfejsu: historię i ulubione. Odczyty graczy i kopii również trafiają do
+kolejki i historii. Po wejściu panel odtwarza ostatni odczyt; użyj przycisku
+odświeżania, aby uzyskać aktualne dane. Gdy nie ma jeszcze odczytu, zleca pierwszy.

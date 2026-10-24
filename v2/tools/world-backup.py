@@ -144,10 +144,21 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root',required=True,type=Path);parser.add_argument('--container',required=True)
     parser.add_argument('--timeout',type=int,default=10);parser.add_argument('--dry-run',action='store_true')
-    parser.add_argument('action',choices=['lista','utworz','przywroc']);parser.add_argument('id',nargs='?')
+    parser.add_argument('action',choices=['lista','dane','utworz','przywroc']);parser.add_argument('id',nargs='?')
     args=parser.parse_args();os.umask(0o077)
     assert args.root.is_absolute() and not args.root.is_symlink(),'Nieprawidłowy katalog kopii'
     assert re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*',args.container),'Nieprawidłowa nazwa kontenera'
+    if args.action=='dane':
+        records=[]
+        for path in sorted(args.root.glob('*.json'),reverse=True):
+            if not re.fullmatch(r'\d{8}-\d{6}-[a-f0-9]{8}',path.stem) or path.is_symlink():continue
+            archive=path.with_suffix('.tar.gz')
+            if archive.is_symlink() or not archive.is_file():continue
+            meta=json.loads(path.read_text())
+            assert meta['id']==path.stem and type(meta['bytes']) is int and meta['bytes']==archive.stat().st_size,'Błędny manifest kopii'
+            created=datetime.datetime.strptime(path.stem[:15],'%Y%m%d-%H%M%S').replace(tzinfo=datetime.timezone.utc).isoformat()
+            records.append({'id':path.stem,'bytes':meta['bytes'],'created':created})
+        print(json.dumps({'backups':records},ensure_ascii=False));return
     if args.action=='lista':
         say('KOPIE ŚWIATA — ID / rozmiar')
         for path in sorted(args.root.glob('*.json'),reverse=True):

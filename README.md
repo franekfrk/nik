@@ -2,9 +2,30 @@
 
 **Dla Franka ♥ Tata**
 
-Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
-teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.6.2**.
+NIK to przede wszystkim **modułowy projekt Bash z polskimi komendami do
+Minecraft Java**. Obsługuje przedmioty, zaklęcia, efekty, teleporty, tryby gry,
+zestawy, wiadomości i kopie świata. Terminal ma kolorowe listy i baner,
+uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.7.0**.
+
+Do projektu należy też **opcjonalny panel WWW/PWA NIK Mobile** — minecraftowa
+nakładka na oryginalny `nik.sh`. **Dziecko lub gracz może wpisywać polskie
+polecenia w terminalu albo wybierać te same czynności w panelu WWW**, również
+na telefonie. Obie drogi korzystają z jednego NIK, tej samej konfiguracji
+oraz jego walidacji i logiki komend.
+
+| Sposób obsługi | Jak korzystać |
+|---|---|
+| Terminal Bash na serwerze | Po wczytaniu NIK wpisz np. `daj g1 diament 16`, `plecak g1` lub uruchom `nik menu`. |
+| Panel WWW na komputerze lub telefonie | Zaloguj się, wybierz gracza, przedmiot albo akcję i naciśnij „Wykonaj”. |
+| Aplikacja PWA | Zainstaluj panel z przeglądarki pod adresem HTTPS, aby mieć jego ikonę na telefonie. |
+
+```mermaid
+flowchart LR
+    T[Terminal Bash] --> N[nik.sh i moduły NIK]
+    P[Panel WWW / PWA] --> N
+    N --> R[Docker / RCON]
+    R --> M[Minecraft]
+```
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -32,6 +53,7 @@ w [`archive/v1/`](archive/v1/). Archiwum zachowuje historyczny kod; instaluj v2.
 | Zapis bieżącego stanu | `zapiszswiat` |
 | Oddzielne kopie świata | `kopia`, `kopia lista` |
 | Przywracanie po kopii bieżącego świata | `przywroc ID_KOPII --potwierdz` |
+| Stan graczy: online, zdrowie, tryb i pozycja | `nik stan`, `nik stan g1` |
 | Diagnostyka | `nik status` |
 
 Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
@@ -39,19 +61,39 @@ z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
 pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
 Niestandardowe datapacki mogą wymagać osobnych zmian.
 
-## NIK Mobile — panel i PWA, nowe w 2.6
+## NIK Mobile — panel WWW i PWA
 
-Panel ma lokalne ikonki wszystkich przedmiotów i stworzeń Minecrafta oraz podgląd wyboru.
+Panel jest dodatkowym interfejsem do bashowego NIK. Użytkownik może wybrać
+przyciski zamiast pisać komendy; panel uruchamia oryginalny `nik.sh` na serwerze.
+NIK odpowiada za interpretację poleceń, walidację graczy i przedmiotów,
+komunikację z Minecraftem oraz tworzenie kopii świata. Terminal działa również
+samodzielnie, bez uruchomionego panelu. Backend panelu używa Pythona 3.11+
+i jego biblioteki standardowej, a widok korzysta z HTML, CSS i JavaScript.
 
-Minecraftowy panel na telefon i komputer: wybór gracza, duże kafelki, wyszukiwarka
-przedmiotów i stworzeń, ilości, zaklęcia, efekty, teleporty, zadania i wiadomości
-od Taty. Uruchamia obecny `nik.sh` z tą samą prywatną konfiguracją.
+W panelu znajdziesz:
 
-Panel działa jako usługa użytkownika systemd na lokalnym porcie 6767; prywatny
-HTTPS i prawidłowy certyfikat zapewnia Tailscale Serve. Można zainstalować PWA
-z przeglądarki telefonu. Oprawa działa z cache, a polecenia wymagają połączenia
-z serwerem i nie są odtwarzane offline. Hasło, cookie i CSRF chronią dostęp.
-Szczegóły instalacji i obsługi: [panel/README.md](v2/panel/README.md).
+- minecraftowy wygląd i prawdziwe, lokalne ikonki 1657 przedmiotów oraz 90 stworzeń;
+- wybór gracza, wyszukiwarkę polskich i angielskich nazw, ilości i zaklęcia;
+- ekwipunek, efekty, teleporty, tryby gry, zadania i kolorowe wiadomości od Taty;
+- własne ulubione przyciski z zapamiętanym graczem i parametrami;
+- historię ostatnich 100 działań z wynikami, filtrami gracza, komendy i daty;
+- kolejkę ze stanami „Oczekuje”, „Wykonuje się” i „Zakończone”;
+- karty graczy online: zdrowie, jedzenie, tryb, pozycję i szybkie akcje;
+- datę ostatniej kopii świata i tworzenie nowej po potwierdzeniu przerwy w grze;
+- podgląd bez zmian w grze oraz potwierdzenia ważniejszych operacji.
+
+**Historia, wyniki i ulubione pozostają po odświeżeniu, ponownym logowaniu
+i restarcie panelu.** Są zapisane prywatnie na własnym serwerze. Kliknij wpis
+historii, aby ponownie otworzyć wynik; panel nie ponawia przez to komendy.
+
+Panel działa jako usługa użytkownika systemd na porcie 6767. Prywatny HTTPS
+z prawidłowym certyfikatem może zapewnić Tailscale Serve. Można również włączyć
+lokalny dostęp HTTP po IP serwera. Instalacja PWA wymaga HTTPS; jej oprawa działa
+z cache, a wykonywanie komend wymaga połączenia z serwerem. Polecenia nie są
+odtwarzane offline. Dostęp chronią hasło, cookie sesji oraz CSRF.
+
+Instalacja, konfiguracja, obsługa i sterowanie usługą:
+[instrukcja panelu WWW/PWA](v2/panel/README.md).
 
 ## Stabilizacja 2.5.1
 

@@ -2,10 +2,37 @@
 
 Dla Franka ♥ Tata
 
-NIK to modułowy interfejs Bash do Minecraft Java w Dockerze. Możesz pisać
-`d g1 jajo_creepera`, wyszukiwać polskie nazwy i uzupełniać je klawiszem Tab.
-Pomoc, listy i komunikaty używają minecraftowych kolorów; baner i pomoc mają
-tęczowy podpis. Tryb `--podglad` pokazuje plan bez wykonywania komend.
+NIK to przede wszystkim **modułowy projekt Bash do polskich komend Minecraft
+Java w Dockerze**. Ma też opcjonalną nakładkę **WWW/PWA NIK Mobile** na telefon
+i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
+czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
+z tej samej konfiguracji, walidacji oraz logiki gry.
+
+## Terminal albo panel WWW
+
+W terminalu po wczytaniu skryptu możesz wpisać:
+
+```bash
+daj g1 diament 16
+plecak g1
+przywolaj g1 krowa 3
+nik menu
+```
+
+Panel prowadzi przez te same czynności: wybierz gracza, wyszukaj przedmiot lub
+stworzenie, ustaw ilość i naciśnij „Wykonaj”. Możesz też zapisać własny przycisk
+w ulubionych. Działa w przeglądarce komputera i telefonu, a przez HTTPS można
+zainstalować go jako PWA. Terminal obsługuje ponadto pełny zestaw komend NIK,
+w tym operacje administracyjne opisane w dalszej części instrukcji.
+
+NIK w terminalu działa samodzielnie. Panel uruchamia istniejący skrypt Bash;
+odczyty graczy, zmiany gry i kopie świata wykonują komendy NIK. Backend WWW to
+Python 3.11+ z biblioteką standardową; jego własne dane to historia i ulubione.
+Instalacja i pełna obsługa nakładki: [instrukcja panelu](panel/README.md).
+
+Polskie nazwy można wyszukiwać i uzupełniać klawiszem Tab. Pomoc, listy i komunikaty
+używają minecraftowych kolorów; baner i pomoc mają tęczowy podpis. Tryb
+`--podglad` pokazuje plan bez wykonywania komend.
 
 `przywolaj GRACZ STWORZENIE [ILOŚĆ]` przyjmuje opcjonalnie 1–64 sztuki.
 Bez ilości przywołuje dokładnie jedno stworzenie. `x`, 0 i przekroczony limit
@@ -14,6 +41,19 @@ Wszystkie stworzenia pojawiają się 2 bloki obok aktualnej pozycji gracza;
 NIK nie sprawdza wolnego miejsca. Przy błędzie w połowie wcześniej przywołane
 stworzenia pozostają, a dalsze polecenia nie są wykonywane. Bossy nadal
 wymagają potwierdzenia; dotyczy ono całej podanej liczby.
+
+## NIK 2.7.0 — panel jako nakładka
+
+Panel Mobile 1.3 zachowuje historię ostatnich 100 działań i ich wyniki po
+odświeżeniu, logowaniu i restarcie. Ma trwałe ulubione akcje, filtry historii,
+kolejkę, karty stanu graczy i kopie świata. Każdy odczyt i zmiana Minecrafta
+przechodzą przez CLI NIK. Skróty otwierają formularz z zapisanymi ustawieniami;
+wykonanie i potwierdzenia nadal należą do użytkownika.
+
+Stan graczy jest dostępny również bez panelu: `nik stan`, `nik stan g1`,
+`nik stan lista json`. Kopie: `nik kopia`, `nik kopia lista`, `nik kopia dane`.
+Kopia chwilowo zatrzymuje Minecrafta, a po archiwizacji uruchamia go ponownie.
+Szczegóły panelu i prywatnego pliku historii: [panel/README.md](panel/README.md).
 
 ## Stabilizacja 2.5.1
 

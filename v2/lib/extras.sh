@@ -76,9 +76,9 @@ nik_cmd_favorite() {
 nik_cmd_backup() {
     local action=${1:-utworz}
     case $action in
-        lista) nik_args 1 "$@" ;;
-        utworz) (($# <= 1)) || nik_die 'Użycie: kopia [utworz|lista]' ;;
-        *) nik_die 'Użycie: kopia [utworz|lista]' ;;
+        lista|dane) nik_args 1 "$@" ;;
+        utworz) (($# <= 1)) || nik_die 'Użycie: kopia [utworz|lista|dane]' ;;
+        *) nik_die 'Użycie: kopia [utworz|lista|dane]' ;;
     esac
     nik_world_backup "$action"
 }
@@ -90,9 +90,9 @@ nik_world_backup() {
     # The helper has no shell interpolation; world paths come from Docker
     # inspection and server.properties, never from a user supplied host path.
     local rc=0
-    if [[ $1 != lista ]] && (( !NIK_DRY_RUN )); then nik_log START "świat $*" || return "$?"; fi
+    if [[ $1 != lista && $1 != dane ]] && (( !NIK_DRY_RUN )); then nik_log START "świat $*" || return "$?"; fi
     python3 "$NIK_ROOT/tools/world-backup.py" --root "$NIK_ROOT/world-backups" --container "$NIK_CONTAINER" --timeout "$NIK_TIMEOUT" "${options[@]}" "$@" || rc=$?
-    if [[ $1 != lista ]] && (( !NIK_DRY_RUN )); then
+    if [[ $1 != lista && $1 != dane ]] && (( !NIK_DRY_RUN )); then
         if ((rc)); then nik_log ERROR "świat $*" || true; else nik_log OK "świat $*" || return "$?"; fi
     fi
     return "$rc"

@@ -10,8 +10,9 @@ nik_completion_candidates() {
             nagroda) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             pogoda) words=(slonce czysto deszcz burza) ;;
             ochrona) words=(status budowanie wylacz) ;;
+            stan) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             punkt) words=(lista usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
-            kopia) words=(utworz lista) ;;
+            kopia) words=(utworz lista dane) ;;
             przywroc) for word in "$NIK_ROOT"/world-backups/*.json; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.json}"); done ;;
             zestaw) words=(lista pokaz zapisz "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             przywolaj) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" co lista) ;;
@@ -22,6 +23,7 @@ nik_completion_candidates() {
         case $command in
             nagroda) while IFS= read -r word; do words+=("$word"); done < <(nik_reward_names) ;;
             prowadz|ratunek) words=("${!NIK_PLACES[@]}") ;;
+            stan) words=(json tekst) ;;
             punkt) words=("${!NIK_PLACES[@]}") ;;
             zadanie) words=(pokaz ksiazka gotowe usun) ;;
             przywolaj) words=("${!NIK_CREATURES[@]}" "${!NIK_CREATURE_IDS[@]}" "${!NIK_CREATURE_ALIASES[@]}") ;;
@@ -50,7 +52,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.6.2\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.7.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

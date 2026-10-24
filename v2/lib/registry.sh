@@ -46,7 +46,7 @@ nik_registry() {
     nik_register obserwator nik_cmd_spectator 0 'obserwator GRACZ' 'Tryb obserwatora wskazanego gracza.'
     nik_register przygodowy nik_cmd_adventure 0 'przygodowy GRACZ' 'Tryb przygodowy wskazanego gracza.'
     nik_register zestaw nik_cmd_favorite 0 'zestaw lista | pokaz NAZWA | zapisz NAZWA ITEM[=ILOŚĆ]... | GRACZ NAZWA' 'Zapisuj i dawaj ulubione zestawy; zachowuje rzeczy w ekwipunku.'
-    nik_register kopia nik_cmd_backup 0 'kopia [utworz|lista]' 'Archiwum świata; krótko zatrzymuje i uruchamia serwer.'
+    nik_register kopia nik_cmd_backup 0 'kopia [utworz|lista|dane]' 'Archiwum świata; krótko zatrzymuje i uruchamia serwer.'
     nik_register przywroc nik_cmd_restore 1 'przywroc ID_KOPII' 'Przywróć świat po kopii bieżącego; wymaga --potwierdz, rozłącza graczy.'
 
     nik_register daj nik_cmd_give 0 'daj GRACZ ITEM [ILOŚĆ]' 'Daj przedmiot (1–2304 szt.).'
@@ -75,6 +75,7 @@ nik_registry() {
     nik_register online nik_cmd_online 0 'online' 'Pokaż graczy online.'
     nik_register status nik_cmd_status 0 'status' 'Sprawdź konfigurację, kontener i RCON.'
     nik_register diagnoza nik_cmd_status 0 'diagnoza' 'Diagnostyka połączenia i konfiguracji.'
+    nik_register stan nik_cmd_player_status 0 'stan [GRACZ|lista] [json]' 'Stan online, zdrowie, jedzenie, tryb i pozycja; tylko odczyt.'
     nik_register gracze nik_cmd_players 0 'gracze' 'Lista skonfigurowanych graczy.'
     nik_register gracz_lista nik_cmd_players 0 'gracz_lista' 'Lista skonfigurowanych graczy (zgodność v1).'
     nik_register przedmioty nik_cmd_items 0 'przedmioty' 'Słownik PL → EN.'

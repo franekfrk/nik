@@ -61,7 +61,7 @@ nik_help_group() {
     case $1 in
         daj|encik|zaklnij|napraw|wyposaz|zestaw|plecak|ender) REPLY='PRZEDMIOTY I EKWIPUNEK' ;;
         tp|dom|zamek|dolacz|gdzie|powrot|punkt|miejsce|ratunek|prowadz) REPLY='PODRÓŻE I RATUNEK' ;;
-        efekt|usun|wyczysc|zdrowie|zamroz|odmroz|kreatywny|przetrwanie|obserwator|przygodowy) REPLY='GRACZE I EFEKTY' ;;
+        stan|efekt|usun|wyczysc|zdrowie|zamroz|odmroz|kreatywny|przetrwanie|obserwator|przygodowy) REPLY='GRACZE I EFEKTY' ;;
         tata|wiadomosc|napis|zadanie|fajerwerki|odliczanie|losuj|nagroda) REPLY='OD TATY DLA FRANKA' ;;
         dzien|noc|pogoda|burza|przywolaj|ochrona) REPLY='ŚWIAT I STWORZENIA' ;;
         przedmioty|szukaj|przepis) REPLY='SŁOWNIKI I WYSZUKIWANIE' ;;

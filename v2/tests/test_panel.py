@@ -58,7 +58,7 @@ class AdapterTests(unittest.TestCase):
   for data in [{'action':'mode','player':'g1','mode':'op'},{'action':'enchant_hand','player':'g1','enchantments':[]}]:
    with self.assertRaises(bridge.InputError):bridge.build(data)
  def test_all_exposed_actions_have_build_paths(self):
-  fields={'player':'g1','item':'diamond_sword','creature':'krowa','place':'dom','name':'baza','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'confirm':True}
+  fields={'player':'g1','item':'diamond_sword','creature':'krowa','place':'dom','name':'baza','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','confirm':True}
   for action in bridge.ACTIONS:
    with self.subTest(action=action):self.assertTrue(bridge.build({'action':action,**fields})[0][0])
  def test_pwa_manifest_and_network_only_api(self):
@@ -147,6 +147,34 @@ if [[ ${*: -1} == FAIL ]]; then exit 7; fi
   a,ac=self.login();b,bc=self.login();_,_,j=self.job(a,ac,{'action':'heal','player':'g1'},'private_result_123456')
   self.assertEqual(self.request('/api/jobs/'+j['id'],cookie=b)[0],404)
   self.assertEqual(self.request('/api/jobs/key/private_result_123456',cookie=b)[0],404)
+ def test_history_requires_login_and_is_shared_after_relogin(self):
+  a,ac=self.login();_,_,j=self.job(a,ac,{'action':'inventory','player':'g1','preview':True},'durable_history_12345');result=self.wait(j['id'],a)
+  self.assertEqual(self.request('/api/history')[0],401);self.assertEqual(self.request('/api/history/'+j['id'])[0],401)
+  self.request('/api/logout',{},a,ac);b,bc=self.login()
+  status,headers,listing=self.request('/api/history',cookie=b);self.assertEqual(status,200);self.assertEqual(headers['Cache-Control'],'no-store')
+  summary=next(e for e in listing['entries'] if e['id']==j['id']);self.assertNotIn('output',summary);self.assertNotIn('owner',summary);self.assertNotIn('key',summary)
+  status,_,saved=self.request('/api/history/'+j['id'],cookie=b);self.assertEqual(status,200);self.assertEqual(saved['output'],result['output']);self.assertEqual(saved['state'],'success');self.assertEqual(saved['action'],'inventory');self.assertEqual(saved['player'],'g1')
+  self.assertEqual(self.request('/api/history/missing',cookie=b)[0],404)
+  self.assertEqual(self.request('/state/panel/history.sqlite3',cookie=b)[0],404)
+  self.assertEqual(self.request('/api/jobs/'+j['id']+'/cancel',{},b,bc)[0],404)
+ def test_favorites_validate_csrf_and_persist_across_logins(self):
+  self.assertEqual(self.request('/api/favorites')[0],401)
+  a,csrf=self.login();data={'name':'Ulecz gracza','request':{'action':'heal','player':'g1','confirm':True,'preview':True,'password':'do-not-store'}}
+  self.assertEqual(self.request('/api/favorites',data,a,'wrong')[0],403)
+  status,_,saved=self.request('/api/favorites',data,a,csrf);self.assertEqual(status,201)
+  b,bc=self.login();entries=self.request('/api/favorites',cookie=b)[2]['entries'];favorite=next(e for e in entries if e['id']==saved['id'])
+  self.assertEqual(favorite['request'],{'action':'heal','player':'g1'})
+  self.assertEqual(self.request('/api/favorites',{'name':'x','request':{'action':'shell'}},a,csrf)[0],400)
+  self.assertEqual(self.request('/api/favorites',{'name':'','request':{'action':'heal','player':'g1'}},a,csrf)[0],400)
+  self.assertEqual(self.request('/api/favorites/'+saved['id']+'/delete',{},b,bc)[0],200)
+  self.assertNotIn(saved['id'],[e['id'] for e in self.request('/api/favorites',cookie=b)[2]['entries']])
+ def test_new_adapters_require_confirmation_and_always_use_nik(self):
+  for action,command in [('backup','kopia'),('equip','wyposaz')]:
+   data={'action':action,'player':'g1','kit':'budowniczy'}
+   with self.assertRaises(bridge.InputError):bridge.build(data)
+   args=bridge.argv(ROOT,ROOT/'config.example',{**data,'confirm':True});self.assertEqual(args[:2],['bash',str(ROOT/'nik.sh')]);self.assertIn(command,args);self.assertIn('--potwierdz',args)
+  self.assertEqual(bridge.build({'action':'players'})[0],['stan','lista','json'])
+  self.assertEqual(bridge.build({'action':'backups'})[0],['kopia','dane'])
  def test_logout_revokes_session(self):
   cookie,csrf=self.login();self.assertEqual(self.request('/api/logout',{},cookie,csrf)[0],200);self.assertEqual(self.request('/api/session',cookie=cookie)[0],401)
  def test_static_csp_and_no_file_traversal(self):
@@ -165,7 +193,8 @@ class RealNIKPreviewTests(unittest.TestCase):
    bin=base/'bin';bin.mkdir();docker=bin/'docker';docker.write_text('#!/usr/bin/env bash\ntouch "'+str(base/'DOCKER_WAS_CALLED')+'"\nexit 99\n');docker.chmod(0o700)
    quests=cfg/'quests';quests.mkdir()
    state=base/'state';(state/'returns').mkdir(parents=True);(state/'returns/PlayerOne.json').write_text(json.dumps({'schema':1,'player':'PlayerOne','container':'minecraft','position':['1','64','2'],'rotation':['0','0'],'dimension':'minecraft:overworld'}))
-   fields={'player':'g1','item':'diamentowy_miecz','creature':'krowa','place':'baza','name':'port','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'confirm':True,'preview':True}
+   (cfg/'favorites').mkdir();(cfg/'favorites/budowniczy.tsv').write_text('torch\t64\n')
+   fields={'player':'g1','item':'diamentowy_miecz','creature':'krowa','place':'baza','name':'port','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','confirm':True,'preview':True}
    for action in bridge.ACTIONS:
     with self.subTest(action=action):
      record=quests/'PlayerOne.json'

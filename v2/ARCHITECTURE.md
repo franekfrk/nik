@@ -65,3 +65,11 @@ za dopuszczone schematy żądań. Każda czynność uruchamia istniejący `nik.s
 Popen z listą argumentów; nie omija rejestru ani nie implementuje ponownie RCON.
 `panel/static` jest oprawą PWA. HTTPS kończy się w Tailscale Serve, a backend
 domyślnie przyjmuje loopback, opcjonalnie konkretny prywatny IPv4 dla HTTP LAN. Hasła/hash/origins należą do prywatnego configu.
+
+W Mobile 1.3 `panel/history.py` przechowuje ograniczoną historię i ulubione
+w prywatnym `state/panel/history.sqlite3`. Dane operacji nie trafiają do zasobów
+PWA. Odczyt graczy wywołuje `nik stan lista json`, a lista kopii `nik kopia dane`;
+zmiany gry i tworzenie kopii również wywołują oryginalny `nik.sh`. Logika odczytu
+stanu gracza jest w `lib/players.sh` i `tools/player-status.py`, a archiwizacja
+pozostaje w istniejącym `tools/world-backup.py`. Panel nie ma własnego transportu
+Docker/RCON ani parsera plików świata.

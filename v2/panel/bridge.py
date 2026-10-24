@@ -21,10 +21,12 @@ ACTIONS = {
  'reward':('Nagroda od Taty','nagroda'), 'weather':('Zmień pogodę','pogoda'),
  'day':('Ustaw dzień','dzien'), 'night':('Ustaw noc','noc'),
  'save':('Zapisz świat','zapisz'), 'status':('Sprawdź serwer','status'),
+ 'players':('Stan graczy','stan'), 'backup':('Kopia świata','kopia'), 'backups':('Lista kopii świata','kopia'),
+ 'kit':('Daj ulubiony zestaw','zestaw'), 'equip':('Gotowe wyposażenie','wyposaz'),
  'recipe':('Przepis wytwarzania','przepis'), 'mode':('Tryb gry',''),
 }
-GLOBAL={'weather','day','night','save','status','recipe'}
-CONFIRM={'clear_effects'}
+GLOBAL={'players','backup','backups','weather','day','night','save','status','recipe'}
+CONFIRM={'clear_effects','equip','backup'}
 ANSI=re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
 def text(data,key,default=None,limit=100):
@@ -48,7 +50,11 @@ def build(data):
  if action in CONFIRM and not (preview or confirmed):raise InputError('Ta czynność wymaga potwierdzenia.')
  args=[ACTIONS[action][1]]
  if action not in GLOBAL:args.append(text(data,'player'))
- if action in {'give','summon'}:
+ if action=='players':args.extend(['lista','json'])
+ elif action=='backup':args.append('utworz')
+ elif action=='backups':args.append('dane')
+ elif action in {'kit','equip'}:args.append(text(data,'kit'))
+ elif action in {'give','summon'}:
   args.extend([text(data,'item' if action=='give' else 'creature'),integer(data,'count',1,1,2304 if action=='give' else 64)])
  elif action in {'enchant','enchant_hand'}:
   if action=='enchant':args.append(text(data,'item'))
@@ -104,4 +110,6 @@ def metadata(root,config):
  enchantments=[{'id':r[0],'name':r[0].replace('_',' '),'max':int(maxima[r[1]][0]),'description':maxima[r[1]][1]} for r in rows(root/'data/enchantment-names.tsv')]
  effects=[{'id':r[0],'name':r[0].replace('_',' '),'description':r[2] if len(r)>2 else ''} for r in rows(root/'data/effects.tsv')]
  rewards=sorted({p.stem for directory in [root/'data/rewards',config/'rewards'] for p in directory.glob('*.tsv') if p.is_file() and not p.is_symlink()})
- return {'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.1','actions':list(ACTIONS)}
+ kits=sorted(p.stem for p in (config/'favorites').glob('*.tsv') if p.is_file() and not p.is_symlink())
+ equipment=sorted(p.stem for p in (config/'sets').glob('*.tsv') if p.is_file() and not p.is_symlink())
+ return {'kits':kits,'equipment':equipment,'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.3','actions':list(ACTIONS)}

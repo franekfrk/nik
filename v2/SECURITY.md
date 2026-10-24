@@ -47,3 +47,9 @@ odtwarza poleceń offline. Hasło początkowe oraz panel.json należą do config
 i nigdy do publicznego repo ani ZIP-a. Szczegóły: panel/README.md.
 
 Opcjonalny dostęp LAN przez wskazany prywatny IPv4 używa HTTP; cookie ma wtedy HttpOnly/SameSite, bez Secure. Używaj go wyłącznie w zaufanej sieci. HTTPS/PWA pozostaje dostępne przez Tailscale.
+
+Historia i ulubione Mobile 1.3 są wspólne dla administratorów używających hasła
+panelu. Dostęp wymaga sesji; modyfikacje ulubionych także CSRF. Plik SQLite ma
+uprawnienia 600, katalog 700; `state` jest wyłączony z Gita i publicznych paczek.
+Historia może zawierać pozycje i ekwipunek graczy. Sesje pozostają w pamięci, więc
+restart wymaga logowania. Przerwane operacje nie są odtwarzane automatycznie.

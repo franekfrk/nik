@@ -267,3 +267,29 @@ konfiguracji ani graczy.
 Kontrola: 231 testów Bats i 92 testy Python (w tym 26 testów panelu), bash -n, ShellCheck i kontrola składni JavaScript. Ikonki i podgląd sprawdzono w przeglądarce dla szerokości 390 px i widoku desktop.
 
 Sprawdzono też zamknięcie okna przez „Zostaw w tle” i ponowne otwarcie zakończonego wyniku z klikalnej historii. Odczyt historii nie wysyła ponownie polecenia. Wyniki pozostają w pamięci bieżącej strony.
+
+## NIK 2.7.0 — trwała historia panelu
+
+Historia ostatnich 100 działań wraz z wynikami jest przechowywana prywatnie
+w SQLite. Testy obejmują ponowne logowanie, odtworzenie bazy i App, niepewny
+wynik przerwanych zadań bez ponawiania, retencję, równoległe zapisy, uprawnienia,
+dowiązania, uszkodzoną bazę, brak miejsca przed zleceniem i kontrolę dostępu HTTP.
+Przeglądarka nie przechowuje wyników w localStorage ani cache PWA.
+
+## NIK 2.7.0 — nakładka na komendy NIK
+
+Ulubione przechodzą walidację NIK w podglądzie; zapis nie wykonuje akcji gry
+i nie zachowuje zgody na nadpisywanie slotów ani zatrzymanie serwera. Adaptery
+kopii i graczy wywołują wyłącznie nik.sh. Testy stanów graczy używają atrapy Dockera
+i sprawdzają brak operacji zapisu. Odczyt metadanych kopii jest testowany na
+prawdziwych archiwach izolowanego świata testowego. Trwającej kopii nie można
+anulować przez API panelu.
+
+Wydanie zweryfikowane: 118 testów Python i 231 testów Bats, bash -n, ShellCheck
+oraz składnia app.js/sw.js. Na homelabie `nik stan lista json` poprawnie odczytał
+komplet danych rzeczywistego gracza online. Po kontrolowanym restarcie usługi
+i nowym logowaniu zachowano identyczny wynik podglądu plecaka oraz ulubione;
+SQLite integrity_check i uprawnienia 600/700 przeszły kontrolę. W przeglądarce
+sprawdzono odtworzenie parametrów ulubionej akcji, filtrowanie po komendzie,
+odświeżenie historii i potwierdzenie kopii świata. Test archiwizacji używa
+izolowanego świata, bez zatrzymywania produkcyjnego Minecrafta.

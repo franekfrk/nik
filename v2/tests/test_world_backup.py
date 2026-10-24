@@ -39,6 +39,12 @@ class WorldBackupTests(unittest.TestCase):
         return result
     def snapshot(self):
         self.run_cli('utworz');return sorted(self.backups.glob('*.json'))[-1].stem
+    def test_machine_readable_list_uses_nik_backup_metadata_without_docker(self):
+        self.assertEqual(json.loads(self.run_cli('dane').stdout),{'backups':[]})
+        ident=self.snapshot();calls=(self.base/'calls').read_text()
+        data=json.loads(self.run_cli('dane').stdout);self.assertEqual(data['backups'][0]['id'],ident)
+        self.assertGreater(data['backups'][0]['bytes'],0);self.assertIn('+00:00',data['backups'][0]['created'])
+        self.assertNotIn('container',data['backups'][0]);self.assertEqual((self.base/'calls').read_text(),calls)
     def test_snapshot_contains_world_and_restarts(self):
         ident=self.snapshot()
         with tarfile.open(self.backups/(ident+'.tar.gz')) as src:self.assertEqual(src.extractfile('world/level.dat').read(),b'level-original')
