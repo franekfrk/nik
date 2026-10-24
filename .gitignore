@@ -14,3 +14,12 @@ id_ed25519*
 *.bak
 *.backup
 *~
+nik-oryginal.sh
+/dist/
+__pycache__/
+
+# Prywatne dane i kopie NIK v2
+/v2/config/*
+!/v2/config/.gitkeep
+/v2/world-backups/
+/world-backups/

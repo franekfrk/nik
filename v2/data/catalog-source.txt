@@ -1,0 +1,5 @@
+Minecraft Java 26.3: rejestry wygenerowane przez net.minecraft.data.Main --reports.
+Nazwy nowych przedmiotów: oficjalny plik Mojang minecraft/lang/pl_pl.json, uproszczone dla CLI.
+SHA256 rejestru: 51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6
+SHA1 pliku PL: c34f69d9b4918d2849b5205a21b8259035820734
+Wykluczono air, którego nie można otrzymać jako normalnego przedmiotu.

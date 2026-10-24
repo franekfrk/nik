@@ -1,135 +1,131 @@
-# NIK — Naczelny Inspektorat Kreeperowy
+# NIK v2 — Naczelny Inspektorat Kreeperowy
 
-NIK to skrypt Bash do zarządzania serwerem Minecraft przez polskie komendy w terminalu. Pozwala dawać przedmioty, nakładać efekty i zaklęcia, teleportować graczy, zmieniać pogodę oraz zapisywać świat. Oferuje słownik przedmiotów PL → EN, podpowiedzi klawiszem Tab i logowanie komend.
+**Dla Franka ♥ Tata**
 
-Skrypt działa na komputerze z dostępem do Dockera obsługującego serwer. Wysyła polecenia przez `docker exec <kontener> rcon-cli`. Nie zestawia sam połączenia SSH z innym serwerem i nie instaluje Minecrafta.
+Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
+teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.1.0**.
 
-## Wymagania
+**Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
+bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
+w [`archive/v1/`](archive/v1/). Archiwum zachowuje historyczny kod; instaluj v2.
 
-- Linux z Bashem 4 lub nowszym i narzędziami `date`, `awk`, `grep`, `sed`, `sort`, `mktemp` oraz `timeout`.
-- Docker i uprawnienia do wykonywania `docker ps`, `docker exec` oraz `docker restart` jako bieżący użytkownik.
-- Uruchomiony kontener serwera Minecraft Java z dostępnym poleceniem `rcon-cli`.
-- Włączony RCON i poprawnie skonfigurowane uwierzytelnienie klienta wewnątrz kontenera. Hasło RCON pozostaje w konfiguracji serwera/kontenera.
+## Co potrafi
 
-Słownik przedmiotów w kodzie opisano jako przygotowany dla Minecraft 1.21.4. Dostępność przedmiotów, zaklęć i składnia poleceń zależą od wersji serwera. Zgodność z innymi wersjami wymaga sprawdzenia na swoim serwerze.
+| Funkcja | Przykład |
+|---|---|
+| Przedmioty i szukanie PL/EN | `daj g1 diament 64`, `szukaj jajo_` |
+| Nowy zaklęty przedmiot | `encik g1 diamentowy_miecz ostrosc:5 naprawa` |
+| Zaklinanie rzeczy w głównej ręce | `zaklnij g1 ostrosc:5 naprawa` |
+| Pełne, kolorowe listy | `przedmioty`, `encik co`, `efekt co` |
+| Efekty i leczenie | `efekt g1 sila 60 2`, `zdrowie g1` |
+| Teleporty i miejsca | `dom g1`, `tp g1 gracz2`, `miejsce lista` |
+| Tryb wskazanego gracza, ten sam świat | `kreatywny g1`, `przetrwanie g1`, `obserwator g1` |
+| Własne zestawy | `zestaw zapisz wyprawa pochodnia=64 pieczona_wolowina=32` |
+| Dawanie zapisanego zestawu | `zestaw g1 wyprawa` |
+| Zapis bieżącego stanu | `zapiszswiat` |
+| Oddzielne kopie świata | `kopia`, `kopia lista` |
+| Przywracanie po kopii bieżącego świata | `przywroc ID_KOPII --potwierdz` |
+| Diagnostyka | `nik status` |
 
-## Instalacja
+Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
+z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
+pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
+Niestandardowe datapacki mogą wymagać osobnych zmian.
 
-Na komputerze obsługującym kontener wykonaj:
+## Instalacja na serwerze
+
+Wymagania: Linux, Bash 4.4+, Docker dostępny dla użytkownika, `rcon-cli` w
+kontenerze Minecraft, GNU coreutils, `flock`, awk, sed, sort oraz Python 3.11+.
+Kopie świata wymagają również Python 3.11+ w obrazie Minecraft i trwałego
+wolumenu `/data`. Hasło RCON pozostaje w konfiguracji kontenera.
+NIK nie wymaga wpisywania go do publicznych plików i nie łączy się sam przez SSH.
+
+Pierwsza instalacja:
 
 ```bash
 git clone https://github.com/franekfrk/nik.git
 cd nik
-cp nik.local.example.sh nik.local.sh
-nano nik.local.sh
-```
-
-Po uzupełnieniu konfiguracji wczytaj skrypt do bieżącej sesji Bash:
-
-```bash
-source ./nik.sh
+mkdir -p "$HOME/.nik"
+cp -R v2/. "$HOME/.nik/"
+cp -R "$HOME/.nik/config.example/." "$HOME/.nik/config/"
+chmod 700 "$HOME/.nik" "$HOME/.nik/config"
+# Edytuj ~/.nik/config/config.env, players.tsv i places.tsv.
+source "$HOME/.nik/nik.sh"
 nik
 ```
 
-Używaj `source`, ponieważ funkcje, aliasy i podpowiedzi muszą zostać zdefiniowane w bieżącej powłoce. Uruchomienie przez `bash nik.sh` lub `./nik.sh` wyświetla instrukcję zamiast instalować komendy w sesji.
-
-## Co zmienić w konfiguracji
-
-Edytuj **`nik.local.sh`**. Plik jest automatycznie wczytywany z katalogu skryptu i wykluczony z Gita. `nik.local.example.sh` zawiera wyłącznie przykładowe dane.
-
-### Kontener i logi
+Do `~/.bashrc` dodaj:
 
 ```bash
-MC_CONTAINER="minecraft"
-MC_LOG="${XDG_STATE_HOME:-$HOME/.local/state}/nik/nik.log"
-MC_LOG_DNI=30
+source "$HOME/.nik/nik.sh"
 ```
 
-Zmień `MC_CONTAINER` na nazwę swojego kontenera widoczną w `docker ps`. `MC_LOG` określa ścieżkę pliku z historią komend. Wpisy starsze niż `MC_LOG_DNI` dni są usuwane przy wczytywaniu skryptu.
+Po wczytaniu działają skróty `daj`, `d`, `encik`, `zaklnij`, `kreatywny`,
+`zestaw`, `kopia`, `zapiszswiat` i pozostałe komendy oraz uzupełnianie Tab.
+Używaj `source`, żeby dodać je do aktualnej sesji. Strict mode skryptu nie zmienia
+ustawień powłoki użytkownika. Przy aktualizacji zachowaj dotychczasowe `config/`;
+nie kopiuj ponownie przykładów na własne ustawienia.
 
-### Gracze
+## Opcje po polsku
 
 ```bash
-MC_GRACZE=(gracz1 gracz2)
-MC_GRACZE_SKROTY=([gracz1]="g1" [gracz2]="g2")
-MC_GRACZE_NICKI=([gracz1]="PlayerOne" [gracz2]="PlayerTwo")
+nik --pomoc
+nik zaklnij --pomoc
+nik --wersja
+zaklnij g1 ostrosc:5 --podglad
+wyposaz g1 walka --potwierdz
+nik --konfiguracja /sciezka/do/config status
 ```
 
-- `MC_GRACZE` to nazwy używane w poleceniach NIK.
-- `MC_GRACZE_SKROTY` przypisuje im krótkie aliasy.
-- `MC_GRACZE_NICKI` zawiera rzeczywiste nicki Minecraft. Zastąp `PlayerOne` i `PlayerTwo` nickami swoich graczy.
+`--podglad` pokazuje plan bez wykonywania operacji. `--potwierdz` jest wymagane
+przy wybranych operacjach, m.in. przywracaniu świata, nadpisywaniu wyposażenia
+czy restartowaniu. Klawisz Tab podpowiada polskie opcje. Angielskie opcje
+`--config`, `--dry-run`, `--confirm`, `--help`, `--version` nadal działają jako aliasy.
+Nazwy przedmiotów i zaklęć można podawać także z polskimi znakami.
 
-Aby dodać gracza, dopisz go do wszystkich trzech tablic. Polecenia przyjmują nazwę z `MC_GRACZE` lub jej skrót, np. `zdrowie gracz1` i `zdrowie g1`. Obsługiwane nicki zawierają od 1 do 16 liter ASCII, cyfr lub podkreślników, opcjonalnie z kropką na początku.
+## Zapis a kopia świata
 
-### Dom i zamek
+`zapiszswiat` zapisuje bieżący stan gry. `kopia` tworzy osobne archiwum w
+`~/.nik/world-backups/`, które można później przywrócić. **Tworzenie i przywracanie
+kopii na krótko zatrzymuje kontener i rozłącza graczy.** Przywracanie najpierw
+zachowuje bieżący świat. Archiwum i sumy SHA256 są sprawdzane przed zmianami;
+kontener uruchamia się ponownie, jeśli działał przed operacją. Gotowość gry
+sprawdź przez `nik status`.
 
-Ustaw po trzy współrzędne dla każdej lokalizacji:
+Kopia obejmuje świat, dane graczy w świecie i jego wymiary. Nie obejmuje
+konfiguracji serwera, pluginów ani zewnętrznych baz. Kopii nie usuwa się
+automatycznie. Szczegóły, wymagania i granice odzyskiwania opisuje
+[dokumentacja v2](v2/README.md).
+
+## Dane prywatne i paczki
+
+Repozytorium zawiera przykłady `PlayerOne` i `PlayerTwo`. Własna konfiguracja,
+logi, oryginalny prywatny skrypt, archiwa światów oraz gotowe prywatne ZIP-y
+są wykluczone z Gita. `.gitignore` nie usuwa sekretów wcześniej zapisanych
+w historii — sprawdzaj pliki przed publikowaniem.
 
 ```bash
-MC_DOM_X="0"
-MC_DOM_Y="64"
-MC_DOM_Z="0"
-MC_ZAMEK_X="100"
-MC_ZAMEK_Y="70"
-MC_ZAMEK_Z="100"
+python3 v2/tools/package.py --out dist
+# Opcjonalnie, wyłącznie do prywatnego przechowania:
+python3 v2/tools/package.py --out dist --private-config "$HOME/.nik/config"
 ```
 
-To przykładowe wartości — wpisz współrzędne ze swojego świata. Dom i zamek są wspólne dla wszystkich graczy. Puste wartości z szablonu blokują teleport do danego miejsca. Polecenia używają bieżącego wymiaru gracza.
+Paczka publiczna zawiera kod i przykłady. Paczka prywatna zawiera dodatkowo
+wskazane ustawienia. **Nie publikuj paczki prywatnej.** Sumy plików zapisują się
+w `dist/SHA256SUMS`.
 
-Po każdej zmianie konfiguracji ponownie wykonaj `source ./nik.sh`.
-
-## Przykłady użycia
-
-Przykłady zakładają konfigurację graczy i skrótów pokazaną powyżej.
+## Testy i architektura
 
 ```bash
-nik                               # pomoc
-gracz_lista                       # skonfigurowani gracze
-online                            # gracze online
-szukaj kilof                      # wyszukiwanie przedmiotów PL/EN
-daj g1 diamentowy_kilof            # domyślnie 1 sztuka
-daj g1 diamond 64                  # angielskie ID też działa
-efekt g1 sila 60                   # siła na 60 sekund
-usun g1 sila                      # usunięcie wskazanego efektu
-wyczysc g1                        # usunięcie wszystkich efektów
-zdrowie g1                        # leczenie i nasycenie
-dom g1                            # teleport do skonfigurowanego domu
-tp g1 100 70 200                   # teleport pod podane współrzędne
-dolacz g1 g2                      # teleport gracza1 do gracza2
-encik g1 tarcza unbreaking:3       # przedmiot z zaklęciem
-dzien                             # dzień i czysta pogoda
-pogoda deszcz
-zapisz                            # zapis świata
+# Narzędzia kontroli: ShellCheck, Bats, Python 3.11+.
+bash v2/tests/check.sh
 ```
 
-Pełne listy wyświetlisz poleceniami `przedmioty`, `efekt co` oraz `encik co`. Klawisz Tab podpowiada skonfigurowanych graczy, przedmioty, efekty i zaklęcia.
+Moduły Bash znajdują się w `v2/lib/`, katalogi i reguły w `v2/data/`, a narzędzia
+w `v2/tools/`. CI sprawdza składnię Bash, ShellCheck, integralność danych,
+testy komend z modelem Docker/RCON oraz izolowane testy kopii i przywracania.
+Testy nie korzystają z produkcyjnego świata ani prywatnych ustawień.
 
-Pozostałe komendy obejmują `zamek`, `noc`, `burza`, `zamroz`, `odmroz`, `kick`, `wyposaz`, `grzmot`, `wybuch` i `restartmc`.
-
-`encik` **zastępuje przedmiot trzymany w głównej ręce**, a następnie nakłada zaklęcia. `wyposaz` zastępuje również zbroję, drugą rękę i wybrane sloty ekwipunku. `wybuch` przywołuje creepera z natychmiastowym wybuchem, a `restartmc` restartuje kontener. Używaj tych komend ze świadomością ich skutków w świecie gry.
-
-## Automatyczne wczytywanie
-
-Opcjonalnie dodaj do `~/.bashrc`, dostosowując ścieżkę do swojej instalacji:
-
-```bash
-if [[ -f "$HOME/nik/nik.sh" ]]; then
-    source "$HOME/nik/nik.sh"
-fi
-```
-
-Skrypt przy każdym wczytaniu pokazuje baner i sprawdza stan kontenera. Definiuje też funkcje i aliasy w bieżącej sesji, m.in. `tp` i `kick`.
-
-## Rozwiązywanie problemów
-
-- **Minecraft nie działa** — sprawdź `docker ps`, nazwę w `MC_CONTAINER` i uprawnienia użytkownika do Dockera.
-- **Brak `rcon-cli` lub błąd uwierzytelnienia** — sprawdź `docker exec minecraft rcon-cli list`, podstawiając nazwę swojego kontenera. Skonfiguruj RCON i klienta w kontenerze.
-- **Nieznany gracz lub pusta lista** — uzupełnij trzy tablice w `nik.local.sh` i ponownie wczytaj skrypt.
-- **Brak teleportu do domu lub zamku** — uzupełnij wszystkie trzy współrzędne danej lokalizacji.
-- **Polecenia nie są dostępne** — upewnij się, że pracujesz w Bashu i używasz `source`, nie uruchamiasz skryptu jako osobnego procesu.
-
-## Prywatna konfiguracja
-
-Nie dodawaj do repozytorium pliku `nik.local.sh`, haseł RCON, kluczy SSH ani logów. Logi mogą zawierać nicki, współrzędne i treść komend; domyślnie są zapisywane poza projektem. `.gitignore` pomija lokalną konfigurację, pliki `.env`, logi i typowe pliki kluczy.
-
-`nik.local.sh` jest kodem Bash wykonywanym przy `source` — używaj własnego, zaufanego pliku. Do uruchamiania NIK nie jest potrzebny klucz SSH do tego repozytorium.
+Pełne użycie: [README v2](v2/README.md). Zakres kontroli i ograniczenia:
+[VALIDATION.md](v2/VALIDATION.md).

@@ -1,0 +1,4 @@
+shell=bash
+external-sources=true
+# Modules are dynamically loaded by the entrypoint and share globals.
+disable=SC1091,SC2034

@@ -1,0 +1,9 @@
+inventory.0	netherytowy_miecz	sharpness:5 unbreaking:3 mending looting:3 fire_aspect:2 sweeping_edge:3
+inventory.1	netherytowa_siekiera	sharpness:5 unbreaking:3 mending
+inventory.2	luk	power:5 unbreaking:3 infinity flame
+inventory.3	kusza	quick_charge:3 unbreaking:3 mending multishot
+weapon.offhand	tarcza	unbreaking:3 mending
+armor.head	netherytowy_helm	protection:4 unbreaking:3 mending respiration:3
+armor.chest	netherytowy_napiersnik	protection:4 unbreaking:3 mending
+armor.legs	netherytowe_nogawice	protection:4 unbreaking:3 mending swift_sneak:3
+armor.feet	netherytowe_buty	protection:4 unbreaking:3 mending feather_falling:4

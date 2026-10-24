@@ -1,0 +1,3 @@
+# Trusted executable Bash; copy to a dedicated folder as hello.sh.
+nik_cmd_hello() { nik_args 0 "$@"; printf 'Witaj w NIK!\n'; }
+nik_register hello nik_cmd_hello 0 'hello' 'Przykładowe rozszerzenie.'

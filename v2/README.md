@@ -1,0 +1,341 @@
+# NIK v2 — polskie komendy Minecraft
+
+Dla Franka ♥ Tata
+
+NIK to modułowy interfejs Bash do Minecraft Java w Dockerze. Możesz pisać
+`d g1 jajo_creepera`, wyszukiwać polskie nazwy i uzupełniać je klawiszem Tab.
+Pomoc, listy i komunikaty używają minecraftowych kolorów; baner i pomoc mają
+tęczowy podpis. Tryb `--podglad` pokazuje plan bez wykonywania komend.
+
+## Wymagania
+
+Linux, Bash >= 4.4, Docker, `rcon-cli` wewnątrz kontenera, GNU coreutils
+(`timeout`, `date`, `mktemp`), `flock`, awk, sed, sort i chmod.
+Python 3.11+ służy do kopii świata, podpowiedzi literówek, audytów, migracji, pakowania i testów. Do kontroli kodu potrzebne
+są ShellCheck oraz Bats. NIK używa dostępu bieżącego użytkownika do Dockera.
+RCON nadal korzysta z uwierzytelnienia skonfigurowanego w kontenerze; nie trzeba
+wpisywać hasła w NIK. Sam NIK nie zestawia połączenia SSH.
+
+Katalog i reguły sprawdzono dla **Minecraft Java 26.3**: 1657 przedmiotów,
+43 zaklęcia i 40 efektów. Porównano cały rejestr gry, nie tylko changelog.
+`air` jest wykluczone z katalogu zwykłych przedmiotów. Reguły vanilla mogą się
+różnić od reguł niestandardowych datapacków.
+
+## Instalacja
+
+Publiczna paczka zawiera wyłącznie przykładową konfigurację:
+
+```bash
+cp -R config.example/. config/
+# Edytuj config/config.env, config/players.tsv i config/places.tsv.
+bash nik.sh help
+bash nik.sh --podglad daj g1 diamentowy_kilof
+bash nik.sh status
+```
+
+Prywatna paczka ma uzupełnioną konfigurację. Przechowuj ją poza publicznym Gitem.
+Na serwerze można umieścić zawartość paczki w `~/.nik` i dodać do `.bashrc`:
+
+```bash
+source "$HOME/.nik/nik.sh"
+```
+
+Po wczytaniu działają `nik` oraz krótkie komendy, m.in. `daj`, `d`, `encik`,
+`dom`, `efekt`, `zapiszswiat`, `listaefektow` i `gracze`. W interaktywnym Bashu
+pojawia się baner. Strict mode `set -Eeuo pipefail` działa w procesie CLI,
+więc nie zmienia opcji powłoki użytkownika.
+
+## Używanie
+
+```bash
+nik                         # pomoc
+nik encik --pomoc
+przedmioty                  # pełna lista
+szukaj diament
+encik co                    # zaklęcia, poziomy i opisy
+efekt co                    # efekty
+d g1 jajo_creepera
+d g1 "żelazny miecz" 1
+encik g1 diamentowy_miecz ostrosc:5 naprawa
+efekt g1 sila 60              # poziom I na 60 s
+efekt g1 sila 60 2            # poziom II
+nik wyposaz g1 walka --podglad
+nik wyposaz g1 walka --potwierdz
+```
+
+Nazwy Skróty i nazwy graczy zależą od Twojego `players.tsv`.
+`config.example` używa `gracz1/g1` i `gracz2/g2`.
+
+Wszystkie opcje opisują `nik help` i `nik KOMENDA --pomoc`. Opcje mogą wystąpić
+przed lub po komendzie; `--` kończy ich rozpoznawanie. `--podglad` waliduje
+konfigurację i argumenty, ale nie łączy się z Dockerem ani nie zapisuje danych.
+Dla przywracania sprawdza także lokalne archiwum i jego sumę SHA256.
+`--potwierdz` jest wymagane dla `wyposaz`, `wyczysc`, `kick`, `grzmot`, `wybuch`,
+`restartmc`, `przywroc` i `log_rotacja`.
+
+Tab działa dla `nik daj`, `daj`, `d` i pozostałych skrótów. Dopasowuje również
+fragment nazwy, stare aliasy oraz angielskie ID. `daj g1 jajo_` + Tab pokazuje
+pasujące jaja; `daj g1 przyzy` + Tab także je znajduje, ale przedstawia krótkie
+nazwy. W interaktywnym Bashu włączane jest `show-all-if-ambiguous`.
+
+## Ważne zachowania komend
+
+- `encik` daje nowy przedmiot. Nie zastępuje rzeczy w ręce. Zaklęte książki
+  otrzymują `stored_enchantments`. Zgodność przedmiotu, konflikty i maksymalne
+  poziomy są sprawdzane według definicji gry.
+- `wyposaz` zastępuje wskazane sloty. Cały zestaw jest walidowany przed zmianami;
+  główna ręka nie jest używana jako slot roboczy. Dostępne są zestawy `walka`,
+  `kopanie` i `budowniczy`. Dozwolone są też rzeczy bez zaklęć.
+- `zamroz` usuwa stare efekty slowness/jump_boost i nakłada własne modyfikatory
+  `nik:frozen` na movement_speed oraz jump_strength. Nie zmienia bazowych
+  atrybutów gracza i nie daje Jump Boost. Blokada trwa do `odmroz`, również po
+  ponownym logowaniu. Nie jest blokadą teleportacji, lotu kreatywnego ani fizyki;
+  ponowne dodanie Jump Boost przez inne narzędzie może umożliwić skakanie.
+- `odmroz` usuwa modyfikatory NIK oraz slowness i jump_boost z dawnej implementacji.
+  Inne efekty pozostają. Powtórzenie zamrażania/odmrażania jest obsługiwane;
+  brak usuwanego efektu lub modyfikatora nie przerywa operacji.
+- `zdrowie` korzysta z poziomów, które nie przepełniają obliczeń leczenia.
+  Numery poziomów w `efekt` zaczynają się od I, czyli 1. Dla efektów
+  natychmiastowego leczenia/obrażeń ograniczono poziomy, aby uniknąć przepełnienia.
+- `tp g1 '~' '~1' '~'` wylicza pozycję względem gracza. Nazwane miejsca zawierają
+  wymiar. Migracja domu/zamku z v1 przyjmuje overworld, bo v1 nie zapisywało wymiaru.
+- `wybuch` przyzywa zapalonego creepera z zerowym lontem; wymaga `--potwierdz`.
+- `restartmc` sprawdza uruchomienie kontenera, nie pełną gotowość gry.
+  Do jej sprawdzenia użyj `nik status`.
+
+## Nazwy i zgodność
+
+Usunięto zbędne fragmenty nazw jaj, płyt i szablonów. Wszystkie stare nazwy
+pozostają aliasami. Przykłady:
+
+| Stara nazwa | Krótka nazwa |
+|---|---|
+| jajo_przyzywajace_creepera | jajo_creepera |
+| jajo_przyzywajace_krowe | jajo_krowy |
+| szablon_kowalski_silence_armor_trim_smithing_template | szablon_silence |
+| plyta_muzyczna_music_disc_pigstep | plyta_pigstep |
+
+`jajo_niuchacza` to naturalne jajo; przyzywanie używa `jajo_niuchacza_spawn`.
+`zolwie_jajko` to naturalne jajo żółwia, a `jajo_zolwia` jest przyzywające.
+`chain` i `lancuch` wskazują obecnie `iron_chain`; nazwa główna to `zelazny_lancuch`.
+Minecraft zmienił ten ID i wprowadził osobne warianty miedziane.
+
+Akceptowane są polskie znaki, wielkie litery, myślniki i spacje w cudzysłowie.
+Działają aliasy `neterytowy_kilof`, `stol_zaklec`, `crafting` czy `spawn_creepera`.
+Nie dodano niejednoznacznego `kilof`, który ukrywałby wybór materiału.
+Nazwy wariantów miedzi zachowują informacje o utlenieniu i woskowaniu.
+Pełne zmiany: `data/item-renames.tsv`; migracje ID: `data/item-id-migrations.tsv`.
+
+## Konfiguracja
+
+Domyślny katalog to `config/` obok skryptu. Zmień go opcją `--konfiguracja KATALOG`
+lub zmienną `NIK_CONFIG`. `config.env` zawiera literalne `KLUCZ=wartość`:
+bez cudzysłowów, `source`, `eval` i rozwijania `$HOME`. Zapisuj pliki z końcami LF.
+
+| Klucz | Domyślnie | Znaczenie |
+|---|---|---|
+| CONTAINER | minecraft | Kontener |
+| TIMEOUT | 10 | Sekundy na jedno wywołanie Docker/RCON, 1–300 |
+| LOG | katalog stanu użytkownika/nik/nik.log | Absolutna ścieżka logu |
+| LOG_DAYS | 30 | Retencja przy `nik log_rotacja --potwierdz` |
+| COMPONENTS | modern | Format komponentów; legacy dla składni 1.20.5–1.21.4 |
+
+Format legacy zmienia tylko składnię komponentów, nie gwarantuje zgodności
+katalogu 26.3 ze starszymi grami.
+
+Kolumny TSV są rozdzielone tabulatorem:
+
+- `players.tsv`: nazwa, skrót, nick Minecraft.
+- `places.tsv`: nazwa, X, Y, Z, wymiar, np. `minecraft:overworld`.
+- `sets/NAZWA.tsv`: slot, przedmiot, opcjonalne zaklęcia rozdzielone spacjami.
+
+Walidacja wykrywa niekompletne dane, konflikty nazw i skrótów, powtórzone nicki,
+nieprawidłowe współrzędne oraz kolizje miejsc z graczami. Nazwy `co` i `lista`
+są zarezerwowane. Zestawy obsługują inventory.0–26, hotbar.0–8, armor.* i weapon.*.
+Przy migracji: `python3 tools/migrate-v1.py STARY_PLIK NOWY_KATALOG`.
+Migrator nie wykonuje starego skryptu i nie nadpisuje istniejącej konfiguracji.
+
+## Kolory i listy
+
+Listy są posortowane i wyrównane. Zaklęcia mają kolumny **Zaklęcie | Max | Opis**,
+efekty **Nazwa PL | ID | Opis**. Opisy zawijają się pod swoją kolumną.
+Dla bardzo wąskich terminali stosowany jest układ pionowy.
+`NIK_COLOR=auto/always/never` steruje kolorami; `NO_COLOR` wyłącza je automatycznie.
+Potoki domyślnie nie zawierają kodów ANSI. Przewijanie z kolorami:
+
+```bash
+NIK_COLOR=always nik przedmioty | less -R
+```
+
+Wyjście z `less`: q. Dane dla Tab zawsze pozostają bez kolorów.
+
+## Obsługa błędów i logi
+
+Błąd Docker/RCON lub rozpoznany komunikat błędu gry przerywa operację. Nie ma
+ponowień mogących zduplikować przedmioty. Pusta lub wyłącznie kolorowa odpowiedź
+nie jest uznawana za potwierdzenie. Dopuszczone braki efektu/modyfikatora przy
+ich usuwaniu są rejestrowane jako NOOP. Reguły błędów opierają się na angielskich
+komunikatach vanilla; inne języki i pluginy mogą wymagać rozszerzenia wzorca.
+
+Wielokrokowe komendy nie są transakcją: wcześniejsze zmiany nie są cofane po
+błędzie kolejnego kroku. Log zapisuje START/OK/NOOP/ERROR, ma uprawnienia 600,
+a zapis i rotacja korzystają z `flock`. Brak możliwości zapisania START blokuje
+zmianę świata. Rotacja jest jawna. Kody: 0 sukces, 2 błędne użycie/konfiguracja,
+1 błąd gry lub brak potwierdzenia; błędy narzędzi zachowują kod, np. timeout 124.
+
+## Architektura, dane i rozszerzenia
+
+`nik.sh` ładuje moduły `lib/`: konfigurację, resolvery, komunikację RCON,
+komendy, kolory i tabele. `completion.sh` oraz `banner.sh` obsługują sesję Bash.
+Dane i reguły są oddzielone w `data/`; prywatne ustawienia w `config/`.
+`nik_register` przechowuje funkcję, składnię, opis i wymóg potwierdzenia.
+Pomoc i lista komend powstają z tego rejestru.
+
+Rozszerzenia są zaufanym kodem i ładują się tylko jawnie:
+
+```bash
+mkdir -p /tmp/nik-extensions
+cp extensions/example.sh.example /tmp/nik-extensions/hello.sh
+nik --rozszerzenia /tmp/nik-extensions hello
+```
+
+Rejestracja: `nik_register nazwa funkcja 0 'składnia' 'opis'`. Flaga 1 wymaga
+potwierdzenia. Korzystaj z resolverów i `nik_rcon`; każdy krok sekwencji
+sprawdzaj przez `|| return "$?"`.
+
+Rejestry wygenerowano oficjalnym `net.minecraft.data.Main --reports` z używanego
+pliku Mojang 26.3. Polskie nazwy nowych przedmiotów pochodzą z pliku językowego
+Mojang, którego SHA1 zweryfikowano względem oficjalnego indeksu zasobów.
+Reguły zaklęć rozwinięto z supported_items, exclusive_set i max_level.
+Metadane źródeł: `data/catalog-source.txt` i `data/enchantment-rules-source.txt`.
+Pomocnicze narzędzia: `tools/update-catalog.py` oraz `tools/update-enchantment-rules.py`.
+
+Źródła: [wydanie 26.3](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3),
+[zmiana komponentów w 1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5),
+[modyfikatory atrybutów](https://feedback.minecraft.net/hc/en-us/articles/27439697297421-Minecraft-Java-Edition-Snapshot-24w21b).
+
+## Testy i paczki
+
+```bash
+bash tests/check.sh
+```
+
+CI uruchamia `bash -n`, ShellCheck, audyt danych i Bats. Testy używają atrapy
+Docker/RCON; obejmują walidację, wszystkie reguły zaklęć, idempotencję zamrażania,
+timeouty, odpowiedzi gry, tabele, Tab i prywatność paczek. Patrz `VALIDATION.md`.
+
+`tools/package.py --out DIST --private-config KATALOG` buduje publiczny i prywatny
+ZIP. Publiczny pomija konfigurację oraz pliki sekretów; prywatny zawiera tylko
+jawnie wskazaną konfigurację. Prywatny plik powstaje z uprawnieniami 600.
+Pakowanie jest niezależne od historii Gita. Kod pochodzi z dotychczasowego NIK;
+nie dodano nowej licencji projektu.
+
+### Polskie nazwy zaklęć
+
+Wszystkie 43 zaklęcia mają polskie nazwy z gry, bez spacji i ze znakami `_`:
+`ostrosc`, `naprawa`, `niezniszczalnosc`, `jedwabny_dotyk`, `szczescie`.
+Angielskie nazwy nadal działają i można mieszać oba języki w jednej komendzie.
+Akceptowane są też polskie znaki: `ostrość:5`, `niezniszczalność:3`.
+Nazwę ze spacjami podaj w cudzysłowie, np. `"Jedwabny dotyk"`.
+`encik co` pokazuje polską i angielską nazwę, poziom maksymalny oraz opis.
+Tab uzupełnia nazwy w obu językach. Poziom dopisz po dwukropku, np. `ostrosc:5`.
+
+## Nowe funkcje w 2.1
+
+Wszystkie widoczne opcje są po polsku. Dawne angielskie opcje pozostają aliasami:
+
+| Polska opcja | Zgodność angielska | Znaczenie |
+|---|---|---|
+| `--konfiguracja KATALOG` | `--config` | Wybierz konfigurację |
+| `--podglad` | `--dry-run` | Pokaż polecenia bez wykonywania |
+| `--potwierdz` | `--confirm` | Potwierdź operację wymagającą zgody |
+| `--pomoc` | `--help`, `-h` | Pomoc ogólna lub wybranej komendy |
+| `--wersja` | `--version` | Wersja NIK |
+| `--rozszerzenia KATALOG` | `--extensions` | Wczytaj własne moduły |
+
+Możesz pisać `nik pomoc`, `nik polecenia`, a klawisz Tab podpowiada również opcje.
+Literówki w nazwach poleceń, graczy, przedmiotów, zaklęć i efektów wyświetlają
+maksymalnie trzy podpowiedzi. NIK nigdy nie wykonuje poprawionej komendy sam.
+
+### Zaklinanie przedmiotu w ręce
+
+```bash
+zaklnij g1 ostrosc:5 naprawa niezniszczalnosc:3
+zaklnij g1 ostrosc:5 --podglad
+```
+
+`zaklnij` zmienia rzecz w głównej ręce; `encik` nadal daje nową rzecz.
+NIK sprawdza wszystkie nowe zaklęcia przed pierwszą zmianą. Minecraft sprawdza,
+czy pasują do trzymanej rzeczy oraz jej istniejących zaklęć. Komenda zatrzymuje
+się po błędzie. Wcześniejsze zaklęcia z tej samej komendy mogą już być dodane.
+
+### Tryby gracza
+
+```bash
+kreatywny g1
+przetrwanie g1
+obserwator g1
+przygodowy g1
+```
+
+Zmieniają wyłącznie tryb wskazanego gracza. Świat i tryby pozostałych graczy
+pozostają bez zmian. Przed zmianą możesz dopisać `--podglad`.
+
+### Własne ulubione zestawy
+
+```bash
+zestaw zapisz wyprawa diamentowy_miecz pochodnia=64 pieczona_wolowina=32
+zestaw lista
+zestaw pokaz wyprawa
+zestaw g1 wyprawa --podglad
+zestaw g1 wyprawa
+```
+
+`zestaw` daje zapisane przedmioty do ekwipunku bez nadpisywania slotów. Zachowuje
+się jak kilka poleceń `daj`: przy pełnym ekwipunku gra może upuścić przedmioty.
+Nazwa jest unikalna; zapis istniejącego zestawu jest odrzucany. Maksymalnie
+36 pozycji, każda 1–2304 sztuki. Dane trafiają do prywatnego
+`config/favorites/`, wykluczonego z publicznej paczki i Gita.
+Dotychczasowe zestawy slotów i zaklęć nadal obsługuje `wyposaz`.
+
+### Kopie i przywracanie świata
+
+```bash
+zapiszswiat                         # zapis bieżącego świata; bez archiwum
+kopia --podglad                     # opis bez zatrzymywania serwera
+kopia                              # utwórz osobne archiwum
+kopia lista
+przywroc ID_KOPII --podglad          # sprawdź archiwum bez zmian
+przywroc ID_KOPII --potwierdz
+```
+
+**`kopia` i `przywroc` na czas operacji zatrzymują kontener Minecraft.** Gracze
+zostaną rozłączeni. Po zakończeniu uruchamiają go ponownie, jeśli wcześniej działał;
+pełną gotowość gry sprawdza `nik status`. Operacje mają wspólną blokadę, aby
+nie wykonywały się równolegle. Każde przywracanie najpierw tworzy kopię bieżącego świata.
+
+Kopie zawierają dane świata wskazanego przez `level-name` w `/data/server.properties`,
+wraz z wymiarami w jego katalogu oraz oddzielnymi katalogami `_nether` i `_the_end`,
+jeśli istnieją. Wymagany jest trwały, zapisywalny wolumen Docker pod `/data`
+i Python 3.11+ wewnątrz obrazu Minecraft. Używany jest już zainstalowany obraz:
+kontener pomocniczy nie pobiera obrazu i nie ma sieci. Podczas tworzenia kopii
+widzi wolumen tylko do odczytu. Przywracanie zachowuje właściciela plików świata.
+
+Archiwa `.tar.gz`, manifesty i sumy SHA256 znajdują się w `~/.nik/world-backups/`
+(obok `nik.sh`, również przy innej lokalizacji instalacji). Uprawnienia: katalog
+700, nowe pliki 600. Kopie nie są wysyłane do Gita ani publicznej paczki.
+Nie są automatycznie kasowane. Archiwum z błędną sumą, dowiązaniem, plikiem
+specjalnym lub ścieżką poza światem jest odrzucane przed zatrzymaniem serwera.
+
+Kopia obejmuje świat i graczy zapisanych w świecie. Nie archiwizuje całego kontenera,
+konfiguracji serwera, plików pluginów ani zewnętrznych baz danych. Pełny dysk,
+błąd Dockera lub przerwanie mogą uniemożliwić operację; kopia stanu sprzed
+przywracania pozostaje dostępna. Jeśli ponowne uruchomienie kontenera się nie uda,
+użyj `nik status` i sprawdź logi Dockera. Wymuszone zabicie procesu lub awaria
+hosta wymagają ręcznej kontroli kontenera. Kopie na tym samym dysku warto
+przechowywać również na innym nośniku.
+
+## Status wersji
+
+**NIK v2 jest rozwijaną wersją. NIK v1 jest archiwalny i nie jest dalej rozwijany.**
+Kod i dokumentację v1 zachowano w repozytorium w `archive/v1/`.

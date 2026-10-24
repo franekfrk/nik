@@ -1,0 +1,4 @@
+Vanilla Minecraft Java 26.3, JSON z używanego na serwerze mojang_26.3.jar.
+SHA256 archiwum danych wejściowych: c63e513fb5151d27f75634e7267237a5579650444dac7585e1627b4639409626
+Reguły supported_items, max_level oraz exclusive_set rozwinięto z tagów gry.
+Niestandardowe datapacki mogą wymagać regeneracji.
