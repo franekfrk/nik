@@ -1,0 +1,5 @@
+Minecraft Java 26.3.
+Źródło: rejestr minecraft:entity_type z oficjalnego serwera Mojang.
+Zakres: stworzenia odpowiadające jajom w katalogu oraz golem żelazny, golem śnieżny, wither, smok Endu, olbrzym i iluzjoner.
+Nazwy: oficjalny plik pl_pl.json, SHA1 c34f69d9b4918d2849b5205a21b8259035820734
+Manifest: https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json

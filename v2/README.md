@@ -394,3 +394,62 @@ tej komendy pusta odpowiedź z poprawnym wynikiem transportu jest oczekiwana;
 błędy składni, gracza i transportu nadal przerywają operację. Potwierdzenie w
 terminalu oznacza poprawne wykonanie polecenia; nie jest potwierdzeniem
 przeczytania wiadomości ani jej wyglądu w kliencie gry.
+
+## Punkty, plecak, napisy i stworzenia — nowe w 2.3
+
+```bash
+punkt g1 baza                  # zapisz bieżącą pozycję i wymiar
+miejsce lista
+tp g1 baza
+plecak g1
+napis g1 "Brawo! ♥"
+przywolaj g1 krowa
+przywolaj co                   # pełna lista stworzeń
+```
+
+`punkt` zapisuje aktualne X/Y/Z i wymiar gracza online w prywatnym
+`config/places.tsv`. Nazwa przyjmuje polskie znaki i spacje w cudzysłowie,
+normalizowane jak nazwy przedmiotów, np. `"Moja baza"` → `moja_baza`.
+Istniejące miejsca i nazwy kolidujące z graczami są odrzucane. Punkt nie wykonuje
+teleportacji; korzysta z tych samych odczytów i ograniczeń co `gdzie`.
+Teleportuj do niego zwykłym `tp`; nadal powstanie punkt powrotu.
+
+`plecak` odczytuje listę Inventory gracza online. Pokazuje pasek szybkiego wyboru
+(1–9), plecak (1–27), polskie nazwy przedmiotów, ilości i zaklęcia. Jeśli odczyt
+zawiera sloty wyposażenia stosowane w starszych formatach, również je opisuje.
+Nie odpytuje osobno wyposażenia i Ender Chest. Zawartość jest tylko odczytywana,
+bez zmiany ekwipunku. Bardzo rozbudowane lub ucięte odpowiedzi są odrzucane,
+zamiast przedstawiać częściową listę. Parser obsługuje strukturę SNBT i nie
+wykonuje kodu. Podgląd nie zapisuje zawartości na dysku.
+
+`napis` wyświetla wskazanemu graczowi duży złoty tytuł i turkusowy podpis
+**Od Taty ♥**. Wygaszanie: 0,5 s pojawiania, 4 s wyświetlania, 1 s znikania
+(przy 20 tickach/s). Treść ma te same ograniczenia co `tata`: 1–512 znaków,
+bez znaków sterujących, jako zwykły tekst, z polskimi znakami i emoji.
+Zastępuje bieżący tytuł gracza. Ustawienie czasu, podpisu i tytułu to trzy
+kolejne polecenia; błąd przerywa dalsze kroki.
+
+`przywolaj` tworzy jedno stworzenie **2 bloki w kierunku +X od gracza**, na tej
+samej wysokości i w jego wymiarze. Nie daje jaja. Komenda nie szuka wolnej ani
+bezpiecznej przestrzeni; wybierz miejsce z odpowiednią ilością miejsca.
+Przyjmuje polską nazwę, angielskie ID lub `minecraft:ID`. Przykłady:
+`krowa`/`cow`, `zelazny_golem`/`golem`, `smok_endu`/`smok`.
+Lista zawiera 90 rodzajów z rejestru vanilla 26.3, odpowiadających jajom w
+katalogu oraz dodatkowym przywoływalnym stworzeniom. Tab podpowiada oba języki.
+Nie przyjmuje własnego NBT ani wielu stworzeń naraz.
+
+Smok Endu i wither mogą niszczyć otoczenie; dla obu potrzebne jest
+`--potwierdz`. Pozostałe stworzenia zachowują zwykłe zachowanie gry,
+w tym walkę i znikanie potworów na poziomie pokojowym.
+
+```bash
+punkt g1 baza --podglad
+plecak g1 --podglad
+napis g1 "Brawo!" --podglad
+przywolaj g1 krowa --podglad
+przywolaj g1 smok --potwierdz
+```
+
+Podgląd nie odpytuje gracza, nie zapisuje miejsca i nie wykonuje zmian w grze.
+Nowe miejsca pozostają tylko w prywatnej konfiguracji. Nie są publikowane w
+Gicie ani paczce publicznej; trafiają do odświeżonej paczki prywatnej.

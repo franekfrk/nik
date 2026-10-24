@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.2.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.3.0**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -19,6 +19,10 @@ w [`archive/v1/`](archive/v1/). Archiwum zachowuje historyczny kod; instaluj v2.
 | Zaklinanie rzeczy w głównej ręce | `zaklnij g1 ostrosc:5 naprawa` |
 | Pełne, kolorowe listy | `przedmioty`, `encik co`, `efekt co` |
 | Efekty i leczenie | `efekt g1 sila 60 2`, `zdrowie g1` |
+| Zapis miejsca z pozycji gracza | `punkt g1 baza`, później `tp g1 baza` |
+| Podgląd plecaka | `plecak g1` |
+| Duży napis w grze | `napis g1 "Brawo! ♥"` |
+| Stworzenie obok gracza | `przywolaj g1 krowa`, `przywolaj co` |
 | Pozycja i powrót po teleportacji NIK | `gdzie g1`, `powrot g1` |
 | Prywatna wiadomość od Taty w grze | `tata g1 "Świetna budowla! ♥"` |
 | Teleporty i miejsca | `dom g1`, `tp g1 gracz2`, `miejsce lista` |
@@ -104,6 +108,30 @@ poza Gitem i paczkami ZIP. Gracz musi być online.
 Wiadomość trafia wyłącznie do wskazanego gracza: złoty podpis **[Tata ♥]**
 i biała treść, maksymalnie 512 znaków. Tekst nie uruchamia poleceń i nie
 interpretuje selektorów. Te komendy również obsługują Tab i `--podglad`.
+
+## Punkty, plecak, napisy i stworzenia
+
+```bash
+punkt g1 baza                 # pozycja i wymiar gracza → prywatne miejsce
+tp g1 baza
+plecak g1                     # sloty, polskie nazwy, ilości i zaklęcia
+napis g1 "Brawo! ♥"           # złoty tytuł, podpis Od Taty ♥
+przywolaj g1 krowa            # jedno stworzenie obok gracza
+przywolaj co                  # 90 rodzajów stworzeń PL/EN
+```
+
+`punkt` zachowuje istniejące miejsca i odrzuca kolidujące nazwy. `plecak` tylko
+odczytuje listę Inventory: pasek szybkiego wyboru i plecak; obsługuje też dawne
+sloty wyposażenia, jeśli występują w odczycie. Nie odpytuje osobno wyposażenia
+ani Ender Chest. `napis` trwa około 5,5 s przy 20 tickach/s i zastępuje bieżący
+tytuł gracza. Treść jest zwykłym tekstem.
+
+`przywolaj` tworzy stworzenie 2 bloki w kierunku +X od gracza, w jego wymiarze.
+Wybierz miejsce z odpowiednią przestrzenią. Polskie nazwy i angielskie ID
+działają równolegle; Tab podpowiada obie wersje. Smok i wither wymagają
+`--potwierdz`, bo mogą niszczyć otoczenie. Wszystkie nowe komendy obsługują
+`--podglad`, bez odpytywania gracza i wykonywania zmian. Nowe punkty są
+prywatną konfiguracją i pozostają poza publicznym repozytorium.
 
 ## Zapis a kopia świata
 

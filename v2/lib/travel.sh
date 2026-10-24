@@ -75,6 +75,6 @@ nik_cmd_dad() {
     (($# >= 2)) || nik_die 'Użycie: tata GRACZ TREŚĆ...'
     nik_player "$1"; local player=$REPLY message; shift
     command -v python3 >/dev/null || nik_die 'Wiadomości wymagają Python 3.'
-    message=$(python3 "$NIK_ROOT/tools/dad-message.py" "$@") || return "$?"
+    message=$(python3 "$NIK_ROOT/tools/dad-message.py" chat "$@") || return "$?"
     nik_rcon "tellraw $player $message"
 }

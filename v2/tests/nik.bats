@@ -14,6 +14,10 @@ if [[ $MOCK_MODE == transport ]]; then printf 'connection refused\n'; exit 7; fi
 if [[ $MOCK_MODE == timeout ]]; then sleep 3; exit 0; fi
 if [[ $1 == inspect ]]; then printf '%s\n' "${MOCK_RUNNING:-true}"; exit 0; fi
 if [[ $MOCK_MODE == response ]]; then printf '%s\n' "$MOCK_RESPONSE"; exit 0; fi
+if [[ $MOCK_MODE == inventory ]]; then
+    printf '%s\n' 'PlayerOne has the following entity data: [{Slot: 0b, id: "minecraft:diamond_sword", count: 1, components: {"minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:mending": 1}}}, {Slot: 9b, id: "minecraft:torch", count: 64}]'
+    exit 0
+fi
 if [[ $MOCK_MODE == travel ]]; then
     command=${*: -1}
     if [[ $command == 'data get entity '* ]]; then
@@ -62,7 +66,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.2.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.3.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -653,7 +657,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.2.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.3.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -781,4 +785,121 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
     run nik __complete "$command" 1 g
     [ "$status" -eq 0 ]; [[ $output == *'g1'* ]]
   done
+}
+
+@test 'point captures actual coordinates and dimension without teleporting' {
+  export MOCK_MODE=travel
+  run nik punkt g1 baza
+  [ "$status" -eq 0 ]; [[ $output == *'Zapisano punkt: baza'* && $output == *'tp g1 baza'* ]]
+  [[ $(cat "$NIK_CONFIG/places.tsv") == *$'baza\t12.5\t64\t-9.25\tminecraft:the_nether'* ]]
+  [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]; [ ! -d "$NIK_STATE" ]
+  run nik tp g1 baza --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'execute in minecraft:the_nether run tp PlayerOne 12.5 64 -9.25'* ]]
+}
+@test 'point rejects collisions invalid names and offline players without config writes' {
+  before=$(cat "$NIK_CONFIG/places.tsv")
+  run nik punkt g1 g2
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik punkt g1 '../escape'
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  export MOCK_MODE=travel MOCK_LOCATION_ERROR=Pos
+  run nik punkt g1 baza
+  [ "$status" -eq 1 ]; [ "$(cat "$NIK_CONFIG/places.tsv")" = "$before" ]
+}
+@test 'point preview and existing point do not access Docker or overwrite' {
+  run nik punkt g1 baza --podglad
+  [ "$status" -eq 0 ]; [[ $(cat "$NIK_CONFIG/places.tsv") != *'baza'* ]]; [ ! -e "$MOCK_CALLS" ]
+  printf 'baza\t1\t64\t2\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+  run nik punkt g1 baza
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'inventory displays Polish names slots counts and enchantments without game writes' {
+  export MOCK_MODE=inventory
+  run nik plecak g1
+  [ "$status" -eq 0 ]; [[ $output == *'PLECAK GRACZA'* && $output == *'diamentowy_miecz'* && $output == *'pochodnia'* && $output == *'ostrosc: 5'* && $output == *'naprawa: 1'* && $output == *'64'* ]]
+  [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 1 ]; [[ $(cat "$MOCK_CALLS") == *'data get entity PlayerOne Inventory'* ]]
+}
+@test 'empty inventory and malformed or offline replies are handled clearly' {
+  export MOCK_MODE=response MOCK_RESPONSE='PlayerOne has the following entity data: []'
+  run nik plecak g1
+  [ "$status" -eq 0 ]; [[ $output == *'puste'* ]]
+  export MOCK_RESPONSE='PlayerOne has the following entity data: [{Slot:0b,id:'
+  run nik plecak g1
+  [ "$status" -eq 2 ]; [[ $output != *'Traceback'* ]]
+  export MOCK_RESPONSE='No entity was found'
+  run nik plecak g1
+  [ "$status" -eq 1 ]
+}
+@test 'inventory and title previews have no Docker side effects' {
+  run nik plecak g1 --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'data get entity PlayerOne Inventory'* ]]
+  run nik napis g1 'Brawo! ♥' --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'title PlayerOne times 10 80 20'* && $output == *'Od Taty ♥'* && $output == *'"text":"Brawo! ♥"'* ]]
+  [ ! -e "$MOCK_CALLS" ]
+}
+@test 'title validates the whole text before setting times and stops after game errors' {
+  run nik napis g1 $'Bad\nmessage'
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  export MOCK_MODE=semantic
+  run nik napis g1 Brawo
+  [ "$status" -eq 1 ]; [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 1 ]
+}
+@test 'title text and message-looking flags remain literal without clickable actions' {
+  run nik napis g1 '{"clickEvent":{"action":"run_command","value":"/kill @a"}}' --podglad
+  [ "$status" -eq 0 ]
+  payload=${output##*title PlayerOne title }
+  run python3 -c 'import json,sys; d=json.loads(sys.argv[1]); assert set(d)=={"text","color","bold"}; assert "clickEvent" in d["text"]' "$payload"
+  [ "$status" -eq 0 ]
+  run nik tata g1 -- --title
+  [ "$status" -eq 0 ]
+  [[ $(cat "$MOCK_CALLS") == *'[Tata ♥]'* && $(cat "$MOCK_CALLS") == *'"text":"--title"'* ]]
+}
+@test 'summon supports Polish English aliases and namespace without giving eggs' {
+  for creature in krowa cow minecraft:cow; do
+    run nik przywolaj g1 "$creature" --podglad
+    [ "$status" -eq 0 ]; [[ $output == *'execute at PlayerOne run summon minecraft:cow ~2 ~ ~'* && $output != *'give '* ]]
+  done
+  run nik przywolaj g1 golem --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'minecraft:iron_golem'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'summon forbids injection and requires explicit confirmation for bosses' {
+  run nik przywolaj g1 'cow {Passengers:[]}'
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik przywolaj g1 smok
+  [ "$status" -eq 2 ]; [[ $output == *'--potwierdz'* ]]; [ ! -e "$MOCK_CALLS" ]
+  run nik przywolaj g1 wither --potwierdz --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'minecraft:wither'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'creature list and completion support Polish and English without Docker' {
+  run nik przywolaj co
+  [ "$status" -eq 0 ]; [[ $output == *'STWORZENIA'* && $output == *'krowa'* && $output == *'cow'* ]]
+  run nik __complete przywolaj 2 kro
+  [ "$status" -eq 0 ]; [[ $output == *'krowa'* ]]
+  run nik __complete przywolaj 2 cow
+  [ "$status" -eq 0 ]; [[ $output == *'cow'* ]]
+  [ ! -e "$MOCK_CALLS" ]
+}
+@test 'all creature names and aliases resolve to their registry IDs' {
+  run bash -c 'set -Eeuo pipefail; NIK_ROOT=$1; source "$1/lib/helpers.sh"; source "$1/lib/adventures.sh"; for name in "${!NIK_CREATURES[@]}"; do nik_creature "$name"; [[ $REPLY == "${NIK_CREATURES[$name]}" ]]; id=$REPLY; nik_creature "$id"; [[ $REPLY == "$id" ]]; done; for name in "${!NIK_CREATURE_ALIASES[@]}"; do nik_creature "$name"; [[ $REPLY == "${NIK_CREATURE_ALIASES[$name]}" ]]; done' _ "$ROOT"
+  [ "$status" -eq 0 ]
+}
+@test 'new adventure aliases and completion are available after sourcing' {
+  run bash -c 'source "$1"; alias punkt plecak napis przywolaj; complete -p punkt plecak napis przywolaj' _ "$ROOT/nik.sh"
+  [ "$status" -eq 0 ]
+}
+@test 'omitted empty Inventory path is treated as an empty backpack only' {
+  export MOCK_MODE=response MOCK_RESPONSE='Found no elements matching Inventory'
+  run nik plecak g1
+  [ "$status" -eq 0 ]; [[ $output == *'puste'* ]]
+  run nik gdzie g1
+  [ "$status" -eq 1 ]
+}
+@test 'narrow inventory output respects terminal width and color settings' {
+  export MOCK_MODE=inventory NIK_WIDTH=40
+  run nik plecak g1
+  [ "$status" -eq 0 ]
+  while IFS= read -r line; do [ "${#line}" -le 40 ]; done <<< "$output"
+  export NIK_COLOR=always
+  run nik plecak g1
+  [ "$status" -eq 0 ]; [[ $output == *$'\033['* ]]
 }

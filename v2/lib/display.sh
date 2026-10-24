@@ -32,6 +32,7 @@ nik_table() {
     local title='PRZEDMIOTY' heading='NAZWA PL' second='ID MINECRAFT'
     case $kind in
         effects) title='EFEKTY' ;;
+        creatures) title='STWORZENIA'; second='ID MINECRAFT' ;;
         enchantments) title='ZAKLĘCIA'; heading='NAZWA PL'; second='MAX' ;;
     esac
     printf '\n  %s%s%s  %s(%s)%s\n\n' "$bold" "$title" "$reset" "$muted" "$count" "$reset"

@@ -1,6 +1,6 @@
 # NIK v2 — audyt i weryfikacja, 2026-10-24
 
-Wynik kontroli kodu lokalnie i na serwerze: **160/160 testy Bats**, `bash -n`, ShellCheck 0.11.0,
+Wynik kontroli kodu lokalnie i na serwerze: **175/175 testy Bats**, `bash -n`, ShellCheck 0.11.0,
 `py_compile` narzędzi Python i audyt całego katalogu danych.
 
 ## Znalezione i poprawione problemy
@@ -69,7 +69,7 @@ bez nadpisywania slotów, podpowiedzi literówek i polskie opcje z aliasami angi
 Testy Bats obejmują nowe komendy, walidację całego zestawu przed wykonaniem,
 kontrolę błędów gry i uzupełnianie Tab.
 
-19 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
+28 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
 izolowanym modelu Dockera oraz osobnym katalogu świata. Obejmują zgodność zawartości,
 kopię przed przywracaniem, zastępowanie starych plików, osobne wymiary,
 błędne archiwum, dowiązania, wyjście poza katalog, błąd archiwizacji, błąd
@@ -110,3 +110,28 @@ nie zmieniły pozycji graczy i nie wysłały im wiadomości. W chwili kontroli n
 było skonfigurowanego gracza online, więc rzeczywisty odczyt jego danych i wygląd
 wiadomości w kliencie pozostają do potwierdzenia w grze. Log parsera:
 `~/.nik/logs/features-22-parser-check.log`.
+
+## Rozszerzenia 2.3
+
+Dodano punkt, plecak, napis i przywolaj. 15 nowych testów Bats obejmuje odczyt
+punktu z wymiarem, konflikty nazw, puste i ucięte ekwipunki, polskie nazwy,
+ilości i zaklęcia, wąski terminal, kolory, treść tytułów, błędy gry, przywoływanie
+stworzeń PL/EN, ochronę bossów i kompletność słownika.
+9 nowych testów Python sprawdza SNBT: zagnieżdżenia, tablice typowane,
+cudzysłowy i Unicode, sloty, liczniki współczesne i dawne, zaklęte książki,
+nieznane przedmioty oraz odrzucanie uszkodzonego i nadmiernie złożonego wejścia.
+
+Sprawdzono oficjalny kod Mojang 26.3 dla Inventory.save i ItemStackWithSlot;
+slot zapisuje się jako Slot, a przedmiot jest serializowany przez kodek ItemStack.
+Sloty wyposażenia spoza listy Inventory nie są osobno odpytywane. Zbudowano
+słownik 90 stworzeń na podstawie istniejących jaj, rejestru entity_type i pl_pl.json.
+Źródła opisuje data/creatures-source.txt.
+
+Dodatkowa kontrola rzeczywistego parsera Minecrafta 26.3 przyjęła 94 polecenia:
+90 przywołań różnych typów stworzeń, odczyt Inventory i trzy kroki wyświetlenia
+tytułu. Kontrola z nieistniejącym stworzeniem została odrzucona. Polecenia
+poprzedzono execute as @s po potwierdzeniu braku encji konsoli. Nie przywołano
+stworzeń i nie wyświetlano nic prawdziwym graczom. Log:
+`~/.nik/logs/features-23-parser-check.log`. W czasie kontroli żaden skonfigurowany
+gracz nie był online; wygląd napisu i rzeczywisty odczyt jego plecaka wymagają
+potwierdzenia w kliencie gry. Testy parsera SNBT korzystają z danych testowych.

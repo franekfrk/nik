@@ -48,3 +48,12 @@ for line in (root/'data/enchantment-conflicts.tsv').read_text().splitlines():
     a,b=line.split('\t'); assert a in enchants and b in enchants and a!=b, 'Błędny konflikt'
 
 print(f'Audyt OK: {len(items)} przedmiotów, {len(aliases)} aliasów, {len(changes)} zmian nazw; brak kolizji i utraconych ID.')
+
+creatures=mapping('creatures.tsv'); creature_aliases=mapping('creature-aliases.tsv')
+assert len(set(creatures.values()))==len(creatures), 'Powtórzony ID stworzenia'
+assert set(creatures.values())==set((root/'data/registry-creatures.tsv').read_text().splitlines()), 'Brak stworzeń w katalogu'
+assert not (creatures.keys() & creature_aliases.keys()), 'Kolidujący alias stworzenia'
+for name,id in {**creatures,**creature_aliases}.items():
+    assert id in creatures.values(), 'Alias wskazuje nieznane stworzenie'
+    assert name not in creatures.values() or name==id, 'Polska nazwa zasłania angielski ID'
+print(f'Stworzenia: {len(creatures)} nazw, {len(creature_aliases)} aliasów — OK.')

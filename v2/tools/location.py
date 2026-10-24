@@ -46,6 +46,7 @@ def capture(player,container,pos,dimension,rotation):
 def main():
     action=sys.argv[1]
     if action=='capture':print(json.dumps(capture(*sys.argv[2:]),ensure_ascii=False))
+    elif action=='fields':print('\t'.join(validate(json.load(sys.stdin),*sys.argv[2:])))
     elif action=='read':
         path=Path(sys.argv[2]);assert path.is_file() and not path.is_symlink(),'Brak punktu powrotu lub dowiązanie'
         assert path.stat().st_size<=4096,'Nieprawidłowy plik powrotu'

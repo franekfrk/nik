@@ -38,7 +38,7 @@ nik_skroty() {
     local command
     for command in daj encik dom zamek tp dolacz efekt usun zdrowie wyposaz zapisz \
         szukaj przedmioty online gracz_lista dzien noc burza pogoda zamroz odmroz \
-        kick grzmot wybuch restartmc wyczysc zaklnij kreatywny przetrwanie obserwator przygodowy zestaw kopia przywroc gdzie powrot tata wiadomosc; do
+        kick grzmot wybuch restartmc wyczysc zaklnij kreatywny przetrwanie obserwator przygodowy zestaw kopia przywroc gdzie powrot tata wiadomosc punkt plecak napis przywolaj; do
         # Expansion at definition time is intentional for this fixed command list.
         # shellcheck disable=SC2139
         alias "$command=nik $command"

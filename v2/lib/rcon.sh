@@ -36,6 +36,10 @@ nik_rcon() {
     # Minecraft command failures may still arrive with Docker exit code zero.
     plain=$(printf '%s' "$output" | sed -E $'s/\033\\[[0-9;]*[[:alpha:]]//g')
     plain=${plain//$'\r'/}
+    # Vanilla may omit an empty Inventory list from serialized entity data.
+    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ Inventory$ && $plain == 'Found no elements matching Inventory' ]]; then
+        plain="${BASH_REMATCH[1]} has the following entity data: []"; output=$plain
+    fi
     if [[ $command == 'effect clear '* ]] && [[ $plain == "Target doesn't have the requested effect" || $plain == 'Target has no effects to remove' ]]; then
         noop=1
     elif [[ $command =~ ^attribute\ [^\ ]+\ minecraft:(movement_speed|jump_strength)\ modifier\ remove\ nik:frozen$ && $plain == Attribute*' has no modifier nik:frozen' ]]; then

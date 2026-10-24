@@ -195,6 +195,11 @@ nik_cmd_rotate() (
     if awk -v cutoff="$cutoff" '$1 >= cutoff' "$NIK_LOG" > "$tmp" && mv -- "$tmp" "$NIK_LOG"; then return 0; else rm -f -- "$tmp"; return 1; fi
 )
 nik_registry() {
+    nik_register punkt nik_cmd_point 0 'punkt GRACZ NAZWA' 'Zapisz aktualną pozycję gracza jako nazwane miejsce.'
+    nik_register plecak nik_cmd_inventory 0 'plecak GRACZ' 'Czytelny podgląd przedmiotów i zaklęć w plecaku.'
+    nik_register napis nik_cmd_title 0 'napis GRACZ TREŚĆ...' 'Duży złoty tytuł z podpisem Od Taty ♥.'
+    nik_register przywolaj nik_cmd_summon 0 'przywolaj GRACZ STWORZENIE | co' 'Przywołaj jedno stworzenie 2 bloki obok gracza; boss wymaga --potwierdz.'
+
     nik_register gdzie nik_cmd_where 0 'gdzie GRACZ' 'Pokaż pozycję, wymiar i kierunek gracza online.'
     nik_register powrot nik_cmd_back 0 'powrot GRACZ' 'Wróć do pozycji sprzed ostatniej udanej teleportacji NIK.'
     nik_register tata nik_cmd_dad 0 'tata GRACZ TREŚĆ...' 'Prywatna, kolorowa wiadomość od Taty w czacie gry.'
@@ -253,11 +258,13 @@ nik_completion_candidates() {
             kopia) words=(utworz lista) ;;
             przywroc) for word in "$NIK_ROOT"/world-backups/*.json; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.json}"); done ;;
             zestaw) words=(lista pokaz zapisz "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
+            przywolaj) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" co lista) ;;
             efekt|encik) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}" co lista) ;;
             *) words=("${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
         esac
     elif [[ $position == 2 ]]; then
         case $command in
+            przywolaj) words=("${!NIK_CREATURES[@]}" "${!NIK_CREATURE_IDS[@]}" "${!NIK_CREATURE_ALIASES[@]}") ;;
             zaklnij) words=("${!NIK_ENCHANT_NAMES[@]}" "${!NIK_ENCHANT_MAX[@]}") ;;
             daj|encik) nik_item_candidates "$current"; return ;;
             efekt|usun) words=("${!NIK_EFFECTS[@]}") ;;
@@ -282,7 +289,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.2.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.3.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

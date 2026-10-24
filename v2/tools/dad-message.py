@@ -8,5 +8,9 @@ def component(message):
     return json.dumps(['',{'text':'[Tata ♥] ','color':'gold','bold':True},
                        {'text':message,'color':'white','bold':False}],ensure_ascii=False,separators=(',',':'))
 if __name__=='__main__':
-    try:print(component(' '.join(sys.argv[1:])))
+    try:
+        assert len(sys.argv)>=2 and sys.argv[1] in {'chat','title'}, 'Nieprawidłowy tryb wiadomości.'
+        parts=json.loads(component(' '.join(sys.argv[2:])))
+        if sys.argv[1]=='title':print(json.dumps({'text':parts[2]['text'],'color':'gold','bold':True},ensure_ascii=False,separators=(',',':')))
+        else:print(json.dumps(parts,ensure_ascii=False,separators=(',',':')))
     except AssertionError as error:print('NIK: '+str(error),file=sys.stderr);sys.exit(2)
