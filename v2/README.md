@@ -453,3 +453,122 @@ przywolaj g1 smok --potwierdz
 Podgląd nie odpytuje gracza, nie zapisuje miejsca i nie wykonuje zmian w grze.
 Nowe miejsca pozostają tylko w prywatnej konfiguracji. Nie są publikowane w
 Gicie ani paczce publicznej; trafiają do odświeżonej paczki prywatnej.
+
+## Wygoda, ratunek i wspólne przygody — nowe w 2.4
+
+```bash
+ratunek g1                     # dom, leczenie, ognioodporność, odmrożenie
+ratunek g1 baza                 # wybrane wcześniej zapisane miejsce
+napraw g1                      # przedmiot w głównej ręce
+pogoda slonce 10m
+efekt g1 sila 1h 2
+punkt lista
+punkt usun baza --potwierdz
+ender g1
+fajerwerki g1
+zadanie g1 "Zbuduj latarnię przy porcie"
+zadanie g1 pokaz
+zadanie g1 ksiazka
+zadanie g1 gotowe
+ochrona status
+ochrona budowanie --podglad
+ochrona budowanie --potwierdz
+ochrona wylacz --potwierdz
+```
+
+### Ratunek i naprawa
+
+`ratunek` wymaga istniejącego miejsca: domyślnie `dom`, ewentualnie nazwy podanej
+jako drugi argument. Wybierz miejsce, które jest rzeczywiście bezpieczne.
+Przed zmianami sprawdzana jest nazwa celu. Gracz dostaje 30 sekund odporności
+na ogień, leczenie i nasycenie; potem NIK teleportuje go do celu i usuwa własną
+blokadę poruszania oraz dawne efekty zamrożenia. Powstaje zwykły punkt powrotu,
+który może prowadzić z powrotem do niebezpiecznego miejsca.
+
+**Odporność chroni przed obrażeniami od ognia, ale nie zeruje licznika płonięcia.**
+Płomienie mogą pozostać widoczne do ich zwykłego wygaśnięcia lub wejścia do wody.
+Vanilla nie pozwala bezpośrednio zmieniać NBT gracza przez `/data`; ratunek nie
+stawia wody i nie zmienia trybu gry, aby go ugasić. Jest wielokrokowy, nie
+przywraca martwego gracza i może nie zdążyć ochronić go w sytuacji krytycznej.
+
+`napraw` odczytuje SelectedItem i sprawdza zapisane uszkodzenie. Jeśli go nie ma,
+nie zmienia przedmiotu. Dla uszkodzonej rzeczy wywołuje inline item modifier
+`{type:"minecraft:set_damage",damage:1.0,add:false}`. W tej funkcji 1.0 oznacza
+pełną trwałość. Pozostałe komponenty, nazwa, zaklęcia, liczba i typ przedmiotu
+pozostają zachowane. Gracz powinien trzymać tę samą rzecz przez czas operacji.
+Składnia jest sprawdzona dla 26.3; starsze wersje gry mogą używać innego formatu.
+
+### Wygodne czasy i punkty
+
+Czas można podawać jako sekundy bez sufiksu lub `30s`, `10m`, `1h`.
+Dotyczy `efekt` i opcjonalnego czasu w `pogoda`; zakres wynosi 1–1 000 000 sekund.
+`slonce` i `słońce` są odpowiednikami `czysto`. Dawne liczby i angielskie opcje
+pozostają obsługiwane. Czas pogody dotyczy pogody całego świata.
+
+`punkt lista` pokazuje nazwy, współrzędne i wymiary. `punkt usun NAZWA` wymaga
+`--potwierdz`, działa pod tą samą blokadą co dodawanie i atomowo zastępuje plik
+miejsc, zachowując inne wpisy. Można usunąć również `dom` i `zamek`; korzystające
+z nich komendy zgłoszą później brak miejsca. Podgląd niczego nie usuwa.
+
+### Ender Chest, fajerwerki i zadania
+
+`ender` pokazuje 27 slotów skrzyni Endera. Odczyt jest prywatny i nie zmienia
+przedmiotów. Korzysta z tego samego parsera SNBT, polskich nazw i kolorowej tabeli
+co `plecak`, z osobnymi etykietami slotów 1–27.
+
+`fajerwerki` to efekt cząsteczek firework i trzech kolorów dust, z dźwiękami
+wybuchu i migotania. Jest skierowany do wskazanego gracza. Nie przywołuje
+wybuchających rakiet, nie powoduje obrażeń ani nie niszczy bloków. Wygląd
+cząsteczek i dźwięki zależą od ustawień i klienta gracza.
+
+`zadanie GRACZ "TREŚĆ"` zapisuje jedno aktywne zadanie i daje książkę
+**Zadanie od Taty**. Franek otwiera ją w grze jak zwykłą książkę — bez dodatkowych
+uprawnień, pluginów i komendy `/trigger`. Dłuższy tekst jest dzielony na strony.
+Przy pełnym ekwipunku `/give` może upuścić książkę, jak inne dawane przedmioty.
+
+`pokaz` (także brak dodatkowego argumentu) wyświetla zapisane zadanie w terminalu;
+`ksiazka` daje kolejną książkę, `gotowe` oznacza wykonanie w konfiguracji.
+Status zmienia administrator; skrypt nie ocenia automatycznie budowli.
+Wydane książki są dokumentami z chwili ich wydania i nie aktualizują się same.
+Po zakończeniu można wydać nową książkę z aktualnym statusem. Nowe zadanie
+zastępuje zakończone; aktywne trzeba wcześniej zakończyć lub usunąć.
+`zadanie GRACZ usun --potwierdz` usuwa zapis, nie odbiera wcześniej wydanych książek.
+
+Treść ma 1–512 znaków i jest dosłownym tekstem; nie staje się poleceniem ani
+akcją kliknięcia. Rekordy `config/quests/` i ich blokady są prywatne. Paczka
+prywatna zachowuje zadania; Git i paczka publiczna ich nie zawierają.
+
+### Ochrona budowania
+
+Profil dotyczy reguł świata, więc zmiana wymaga `--potwierdz`. Nie włącza się
+sam przy instalacji ani wczytaniu skryptu. Przed ustawieniem zapisywane są
+bieżące wartości czterech reguł:
+
+| Reguła 26.3 | Budowanie |
+|---|---|
+| `minecraft:mob_griefing` | `false` |
+| `minecraft:fire_spread_radius_around_player` | `0` |
+| `minecraft:tnt_explodes` | `false` |
+| `minecraft:projectiles_can_break_blocks` | `false` |
+
+Wyłączenie mob_griefing wpływa też na niektóre zwykłe zachowania mobów.
+Profil nie chroni przed niszczeniem przez graczy, komendami administratora ani
+wszystkimi sposobami powstawania ognia. `ochrona wylacz` przywraca **zapisane
+wartości**, a nie domyślne. Kolejne włączenie nie nadpisuje kopii aktywnego profilu.
+Jeżeli operacja przerwie się po części zmian, kopia pozostaje do odzyskania przez
+`ochrona wylacz --potwierdz`. Zachowaj ją do czasu przywrócenia reguł.
+Dane znajdują się w prywatnym `state/protection/`, poza Gitem i ZIP-ami.
+
+Nazwy reguł i zero wyłączające rozprzestrzenianie ognia potwierdza
+[oficjalny opis zmian reguł](https://www.minecraft.net/en-us/article/minecraft-snapshot-25w44a).
+Format inline item modifiers odpowiada
+[zmianom w Minecraft 26.3](https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3).
+
+### Odświeżony wygląd
+
+Pomoc ma minecraftową ramkę, komendy podzielone na grupy i opcje w osobnych
+wierszach. Status serwera ma panel połączenia i konfiguracji. Słowniki,
+ekwipunki, zadania i punkty mają wspólne nagłówki oraz kolory. Tęczowy podpis
+**Dla Franka ♥ Tata** pozostaje. Układ pomocy i statusu dopasowuje się do
+szerokości 40–110 znaków (`NIK_WIDTH`); długie opisy zawijają się w swojej kolumnie.
+`NO_COLOR` i `NIK_COLOR=never` wyłączają kolory, a podpowiedzi Tab pozostają czyste.

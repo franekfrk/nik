@@ -18,6 +18,8 @@ nik_cmd_summon() {
     nik_rcon "execute at $player run summon minecraft:$creature ~2 ~ ~"
 }
 nik_cmd_point() {
+    if [[ ${1:-} == lista ]]; then nik_args 1 "$@"; nik_cmd_place lista; return; fi
+    if [[ ${1:-} == usun ]]; then nik_cmd_point_delete "$@"; return; fi
     nik_args 2 "$@"; nik_player "$1"; local player=$REPLY name record fields x y z dimension yaw pitch
     nik_normalize_name "$2"; name=$REPLY; nik_id "$name"
     [[ ! -v NIK_PLACES[$name] && ! -v NIK_PLAYERS[$name] && ! -v NIK_ALIASES[$name] ]] || nik_die 'Miejsce już istnieje lub nazwa koliduje z graczem.'
@@ -48,13 +50,13 @@ nik_cmd_inventory() {
     nik_inventory_table "$1" "$rows"
 }
 nik_inventory_table() {
-    local player=$1 rows=$2 slot name count details part width=${NIK_WIDTH:-120} name_width
+    local player=$1 rows=$2 heading=${3:-PLECAK GRACZA} empty=${4:-Plecak i pasek są puste.} slot name count details part width=${NIK_WIDTH:-120} name_width
     if [[ -t 1 && ! -v NIK_WIDTH ]]; then width=$(tput cols 2>/dev/null) || width=80; fi
     [[ $width =~ ^[0-9]{2,3}$ ]] || width=120
     width=$((10#$width)); ((width >= 40)) || width=40
     name_width=$((width-23))
-    nik_message 1 title '\nPLECAK GRACZA: %s\n\n' "$player"
-    if [[ -z $rows ]]; then nik_message 1 muted '  Plecak i pasek są puste.\n\n'; return; fi
+    nik_section "$heading: $player"
+    if [[ -z $rows ]]; then nik_message 1 muted '  %s\n\n' "$empty"; return; fi
     nik_message 1 gold '  %-12s  %-*s  %5s\n' 'SLOT' "$name_width" 'PRZEDMIOT' 'ILOŚĆ'
     while IFS=$'\t' read -r slot name count details; do
         part=${name:0:name_width}; name=${name:name_width}

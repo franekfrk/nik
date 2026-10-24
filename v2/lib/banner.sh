@@ -6,14 +6,13 @@ nik_baner() {
         state='działa'; tone=success
     fi
     while IFS= read -r line; do
+        line=${line#"${line%%[![:space:]]*}"}
         case $line in
             'Log: '*) log=${line#Log: } ;;
             *online:*) players=${line#*online:}; players=${players# } ;;
         esac
     done <<< "$output"
-    nik_message 1 frame '╔════════════════════════════════════════════╗\n'
-    nik_message 1 title '║      NACZELNY INSPEKTORAT KREEPEROWY       ║\n'
-    nik_message 1 frame '╚════════════════════════════════════════════╝\n'
+    nik_panel 'NACZELNY INSPEKTORAT KREEPEROWY' 'NIK 2.4 • PRZYGODA ZACZYNA SIĘ TUTAJ'
     nik_message 1 gold '  %-12s ' 'Minecraft:'
     nik_message 1 "$tone" '%s\n' "$state"
     if [[ -n $players ]]; then
@@ -22,7 +21,7 @@ nik_baner() {
     fi
     if [[ -n $log ]]; then
         nik_message 1 gold '  %-12s ' 'Log:'
-        nik_message 1 muted '%s\n' "$log"
+        nik_ui_text "$log" muted
     fi
     nik_message 1 text '\n  Wpisz: '
     nik_message 1 command 'nik\n'

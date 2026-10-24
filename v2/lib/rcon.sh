@@ -37,7 +37,7 @@ nik_rcon() {
     plain=$(printf '%s' "$output" | sed -E $'s/\033\\[[0-9;]*[[:alpha:]]//g')
     plain=${plain//$'\r'/}
     # Vanilla may omit an empty Inventory list from serialized entity data.
-    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ Inventory$ && $plain == 'Found no elements matching Inventory' ]]; then
+    if [[ $command =~ ^data\ get\ entity\ ([.a-zA-Z0-9_]+)\ (Inventory|EnderItems)$ && $plain == "Found no elements matching ${command##* }" ]]; then
         plain="${BASH_REMATCH[1]} has the following entity data: []"; output=$plain
     fi
     if [[ $command == 'effect clear '* ]] && [[ $plain == "Target doesn't have the requested effect" || $plain == 'Target has no effects to remove' ]]; then

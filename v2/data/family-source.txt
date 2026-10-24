@@ -1,0 +1,6 @@
+Minecraft Java 26.3 (dane i testy silnika).
+Naprawa: SetItemDamageFunction.run, inline modifier type=minecraft:set_damage, damage=1.0, add=false.
+Książki: WrittenBookContent, pages jako komponenty tekstowe.
+Reguły: minecraft:mob_griefing, minecraft:fire_spread_radius_around_player, minecraft:tnt_explodes, minecraft:projectiles_can_break_blocks.
+https://www.minecraft.net/en-us/article/minecraft-java-edition-26-3
+https://www.minecraft.net/en-us/article/minecraft-snapshot-25w44a

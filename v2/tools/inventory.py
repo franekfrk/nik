@@ -69,11 +69,11 @@ def integer(value):
     assert isinstance(value,str) and re.fullmatch(r'-?\d+[bBsSlL]?',value),'Błędna liczba w ekwipunku'
     return int(re.sub('[bBsSlL]$','',value))
 
-def inventory_rows(raw):
+def inventory_rows(raw,ender=False):
     found=re.fullmatch(r'.+ has the following entity data: (.+)',raw.strip())
     assert found,'Nie rozpoznano odpowiedzi Minecrafta na odczyt plecaka'
     items=Snbt(found[1]).parse();assert isinstance(items,list),'Odpowiedź plecaka nie jest listą'
-    assert len(items)<=41,'Za dużo pozycji ekwipunku'
+    assert len(items)<=(27 if ender else 41),'Za dużo pozycji ekwipunku'
     names={line.split('\t')[1]:line.split('\t')[0] for line in (ROOT/'data/items.tsv').read_text().splitlines()}
     enchants={line.split('\t')[1]:line.split('\t')[0] for line in (ROOT/'data/enchantment-names.tsv').read_text().splitlines()}
     seen=set();rows=[]
@@ -81,7 +81,7 @@ def inventory_rows(raw):
         assert isinstance(entry,dict),'Błędny przedmiot w plecaku'
         slot=integer(entry.get('Slot',entry.get('slot')))
         if slot<0:slot+=256
-        assert slot in range(36) or slot in {100,101,102,103,150},'Nieznany slot plecaka'
+        assert slot in range(27) if ender else slot in range(36) or slot in {100,101,102,103,150},'Nieznany slot plecaka'
         assert slot not in seen,'Powtórzony slot plecaka';seen.add(slot)
         item=entry.get('item',entry);assert isinstance(item,dict),'Błędny zapis przedmiotu'
         id=item.get('id');assert isinstance(id,str) and re.fullmatch(r'[a-z0-9_.-]+:[a-z0-9_./-]+',id),'Błędny identyfikator przedmiotu'
@@ -96,7 +96,8 @@ def inventory_rows(raw):
                 level=integer(level);assert 0<=level<=255,'Błędny poziom zaklęcia'
                 key=enchant.removeprefix('minecraft:')
                 details.append(f'{enchants.get(key,clean(key)).replace("_"," ")}: {level}')
-        if slot<9:label=f'pasek {slot+1}';order=slot
+        if ender:label=f'slot {slot+1}';order=slot
+        elif slot<9:label=f'pasek {slot+1}';order=slot
         elif slot<36:label=f'plecak {slot-8}';order=slot
         else:label={100:'buty',101:'nogawice',102:'napierśnik',103:'hełm',150:'druga ręka'}[slot];order=slot
         name=names.get(id.removeprefix('minecraft:'),clean(id)) if id.startswith('minecraft:') else clean(id)
@@ -104,7 +105,14 @@ def inventory_rows(raw):
     return [r[1:] for r in sorted(rows)]
 
 def main():
-    rows=inventory_rows(sys.stdin.read())
+    raw=sys.stdin.read()
+    if sys.argv[1:]==['--damage']:
+        found=re.fullmatch(r'.+ has the following entity data: (.+)',raw.strip());assert found,'Nie rozpoznano trzymanego przedmiotu'
+        item=Snbt(found[1]).parse();assert isinstance(item,dict) and 'id' in item,'Trzymaj przedmiot w głównej ręce'
+        components=item.get('components',{});assert isinstance(components,dict),'Błędne komponenty przedmiotu'
+        damage=integer(components.get('minecraft:damage','0'));assert damage>=0,'Błędne uszkodzenie przedmiotu'
+        print(damage);return
+    rows=inventory_rows(raw,ender=sys.argv[1:]==['--ender'])
     for label,name,count,detail in rows:print(f'{label}\t{name}\t{count}\t{detail}')
 if __name__=='__main__':
     try:main()

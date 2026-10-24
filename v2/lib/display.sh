@@ -35,7 +35,7 @@ nik_table() {
         creatures) title='STWORZENIA'; second='ID MINECRAFT' ;;
         enchantments) title='ZAKLĘCIA'; heading='NAZWA PL'; second='MAX' ;;
     esac
-    printf '\n  %s%s%s  %s(%s)%s\n\n' "$bold" "$title" "$reset" "$muted" "$count" "$reset"
+    nik_section "$title ($count)"
     local rule i line first desc_width indent
     local -a wrapped=()
     printf -v rule '%*s' "$((width-2))" ''; rule=${rule// /─}

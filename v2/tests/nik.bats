@@ -14,6 +14,17 @@ if [[ $MOCK_MODE == transport ]]; then printf 'connection refused\n'; exit 7; fi
 if [[ $MOCK_MODE == timeout ]]; then sleep 3; exit 0; fi
 if [[ $1 == inspect ]]; then printf '%s\n' "${MOCK_RUNNING:-true}"; exit 0; fi
 if [[ $MOCK_MODE == response ]]; then printf '%s\n' "$MOCK_RESPONSE"; exit 0; fi
+if [[ $MOCK_MODE == rules ]]; then
+    command=${*: -1}; read -r verb key value <<< "$command"; key=${key#minecraft:}
+    if [[ ! -e $MOCK_STATE ]]; then printf 'mob_griefing\ttrue\nfire_spread_radius_around_player\t128\ntnt_explodes\ttrue\nprojectiles_can_break_blocks\ttrue\n' > "$MOCK_STATE"; fi
+    if [[ -n ${value:-} ]]; then
+        if [[ ${MOCK_RULE_FAIL:-} == "$key" ]]; then printf 'Unable to set game rule\n'; exit 0; fi
+        awk -F '\t' -v k="$key" -v v="$value" 'BEGIN{OFS="\t"} $1==k{$2=v} {print}' "$MOCK_STATE" > "$MOCK_STATE.tmp"
+        mv "$MOCK_STATE.tmp" "$MOCK_STATE"
+        printf 'Game rule %s is now set to %s\n' "$key" "$value"
+    else value=$(awk -F '\t' -v k="$key" '$1==k{print $2}' "$MOCK_STATE"); printf 'Game rule %s is currently set to %s\n' "$key" "$value"; fi
+    exit 0
+fi
 if [[ $MOCK_MODE == inventory ]]; then
     printf '%s\n' 'PlayerOne has the following entity data: [{Slot: 0b, id: "minecraft:diamond_sword", count: 1, components: {"minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:mending": 1}}}, {Slot: 9b, id: "minecraft:torch", count: 64}]'
     exit 0
@@ -66,7 +77,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.3.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.4.0' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -657,7 +668,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.3.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.4.0'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -902,4 +913,159 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   export NIK_COLOR=always
   run nik plecak g1
   [ "$status" -eq 0 ]; [[ $output == *$'\033['* ]]
+}
+@test 'duration suffixes normalize seconds minutes hours and old integer input' {
+  for pair in '30s 30' '10m 600' '1h 3600' '008 8'; do
+    read -r input seconds <<< "$pair"
+    run nik efekt g1 sila "$input" --podglad
+    [ "$status" -eq 0 ]; [[ $output == *"minecraft:strength $seconds 0"* ]]
+    run nik pogoda slonce "$input" --podglad
+    [ "$status" -eq 0 ]; [[ $output == *"weather clear ${seconds}s"* ]]
+  done
+  [ ! -e "$MOCK_CALLS" ]
+}
+@test 'duration invalid suffixes overflow zero and injected input are rejected' {
+  for input in 0 0m 99999999h 1.5h 1d '1m run kill @a'; do
+    run nik pogoda slonce "$input"
+    [ "$status" -eq 2 ]
+    run nik efekt g1 sila "$input"
+    [ "$status" -eq 2 ]
+  done
+  [ ! -e "$MOCK_CALLS" ]
+}
+@test 'rescue validates destination before effects and previews full plan' {
+  run nik ratunek g1
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  printf 'baza\t1\t64\t2\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+  run nik ratunek g1 baza --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'minecraft:fire_resistance 30 0'* && $output == *'run tp PlayerOne'* && $output == *'instant_health'* ]]
+  [ ! -e "$MOCK_CALLS" ]
+}
+@test 'repair only changes damage in place and skips undamaged item' {
+  export MOCK_MODE=response MOCK_RESPONSE='PlayerOne has the following entity data: {id:"minecraft:diamond_sword",count:1,components:{"minecraft:damage":500,"minecraft:enchantments":{"minecraft:sharpness":5}}}'
+  run nik napraw g1
+  [ "$status" -eq 0 ]; [[ $(cat "$MOCK_CALLS") == *'item modify entity PlayerOne weapon.mainhand {type:"minecraft:set_damage",damage:1.0,add:false}'* && $(cat "$MOCK_CALLS") != *'item replace'* && $(cat "$MOCK_CALLS") != *'give '* ]]
+  rm "$MOCK_CALLS"
+  export MOCK_RESPONSE='PlayerOne has the following entity data: {id:"minecraft:stone",count:64}'
+  run nik napraw g1
+  [ "$status" -eq 0 ]; [[ $(cat "$MOCK_CALLS") != *'item modify'* && $output == *'nie ma zapisanych uszkodzeń'* ]]
+}
+@test 'repair and ender previews do not query or mutate game' {
+  run nik napraw g1 --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'item modify'* ]]
+  run nik ender g1 --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'EnderItems'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'ender inventory uses its own slot labels and handles omitted empty list' {
+  export MOCK_MODE=response MOCK_RESPONSE='PlayerOne has the following entity data: [{Slot:0b,id:"minecraft:diamond",count:4},{Slot:26b,id:"minecraft:torch",count:64}]'
+  run nik ender g1
+  [ "$status" -eq 0 ]; [[ $output == *'SKRZYNIA ENDERA'* && $output == *'slot 27'* && $output != *'pasek 1'* ]]
+  export MOCK_RESPONSE='Found no elements matching EnderItems'
+  run nik ender g1
+  [ "$status" -eq 0 ]; [[ $output == *'pusta'* ]]
+}
+@test 'point list and confirmed deletion preserve other places' {
+  printf 'baza\t1\t64\t2\tminecraft:overworld\ndruga\t3\t70\t4\tminecraft:the_nether\n' >> "$NIK_CONFIG/places.tsv"
+  run nik punkt lista
+  [ "$status" -eq 0 ]; [[ $output == *'ZAPISANE MIEJSCA'* && $output == *'druga'* ]]
+  run nik punkt usun druga
+  [ "$status" -eq 2 ]; [[ $(cat "$NIK_CONFIG/places.tsv") == *'druga'* ]]
+  run nik punkt usun druga --podglad
+  [ "$status" -eq 0 ]; [[ $(cat "$NIK_CONFIG/places.tsv") == *'druga'* ]]
+  run nik punkt usun druga --potwierdz
+  [ "$status" -eq 0 ]; [[ $(cat "$NIK_CONFIG/places.tsv") != *'druga'* && $(cat "$NIK_CONFIG/places.tsv") == *'baza'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'fireworks are targeted visual particles and sounds without explosive entities' {
+  run nik fajerwerki g1 --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'particle minecraft:firework'* && $output == *'particle minecraft:dust'* && $output == *'playsound'* && $output != *'summon'* && $output != *'@a'* ]]; [ ! -e "$MOCK_CALLS" ]
+}
+@test 'quest creates a private in-game book with literal text and completion state' {
+  run nik zadanie g1 'Zbuduj latarnię ♥'
+  [ "$status" -eq 0 ]; [ -f "$NIK_CONFIG/quests/PlayerOne.json" ]; [ "$(stat -c %a "$NIK_CONFIG/quests/PlayerOne.json")" = 600 ]
+  [[ $(cat "$MOCK_CALLS") == *'give PlayerOne minecraft:written_book'* && $(cat "$MOCK_CALLS") == *'Zadanie od Taty'* ]]
+  run nik zadanie g1
+  [ "$status" -eq 0 ]; [[ $output == *'Zbuduj latarnię ♥'* && $output == *'aktywne'* ]]
+  run nik zadanie g1 'Nadpisz aktywne'
+  [ "$status" -eq 2 ]
+  run nik zadanie g1 gotowe
+  [ "$status" -eq 0 ]
+  run nik zadanie g1 pokaz
+  [ "$status" -eq 0 ]; [[ $output == *'gotowe'* ]]
+  run nik zadanie g1 ksiazka --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'Status: gotowe'* ]]
+}
+@test 'quest rejects bad text and failed give leaves no saved active task' {
+  run nik zadanie g1 $'bad\ntext'
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]; [ ! -e "$NIK_CONFIG/quests/PlayerOne.json" ]
+  export MOCK_MODE=semantic
+  run nik zadanie g1 'Zbuduj domek'
+  [ "$status" -eq 1 ]; [ ! -e "$NIK_CONFIG/quests/PlayerOne.json" ]
+}
+@test 'quest preview has no persistent writes and deletion requires confirmation' {
+  run nik zadanie g1 'Zbuduj domek' --podglad
+  [ "$status" -eq 0 ]; [ ! -e "$NIK_CONFIG/quests" ]; [ ! -e "$MOCK_CALLS" ]
+  nik zadanie g1 'Zbuduj domek'
+  run nik zadanie g1 usun
+  [ "$status" -eq 2 ]; [ -f "$NIK_CONFIG/quests/PlayerOne.json" ]
+  run nik zadanie g1 usun --potwierdz
+  [ "$status" -eq 0 ]; [ ! -f "$NIK_CONFIG/quests/PlayerOne.json" ]
+}
+@test 'protection refuses unconfirmed world mutations and preview avoids Docker' {
+  run nik ochrona budowanie
+  [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik ochrona budowanie --podglad
+  [ "$status" -eq 0 ]; [[ $output == *'fire_spread_radius_around_player 0'* && $output == *'mob_griefing false'* && $output == *'tnt_explodes false'* ]]; [ ! -e "$MOCK_CALLS" ]; [ ! -d "$NIK_STATE" ]
+}
+@test 'new help and status panels fit a narrow terminal and retain rainbow footer' {
+  export NIK_WIDTH=40 NIK_COLOR=never
+  for command in help 'status --podglad'; do
+    read -r -a args <<< "$command"
+    run nik "${args[@]}"
+    [ "$status" -eq 0 ]
+    while IFS= read -r line; do [ "${#line}" -le 40 ]; done <<< "$output"
+  done
+  run nik help
+  [[ $output == *'PRZEDMIOTY I EKWIPUNEK'* && $output == *'OD TATY DLA FRANKA'* && $output == *'┌'* && $output == *'Dla Franka ♥ Tata'* ]]
+}
+@test 'family command aliases and contextual completions are installed' {
+  run bash -c 'source "$1"; alias ratunek napraw ender fajerwerki zadanie ochrona; complete -p ochrona zadanie ratunek' _ "$ROOT/nik.sh"
+  [ "$status" -eq 0 ]
+  run nik __complete ochrona 1 bud
+  [ "$status" -eq 0 ]; [[ $output == *'budowanie'* ]]
+  run nik __complete zadanie 2 ksia
+  [ "$status" -eq 0 ]; [[ $output == *'ksiazka'* ]]
+  printf 'baza\t1\t64\t2\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+  run nik __complete ratunek 2 baz
+  [ "$status" -eq 0 ]; [[ $output == *'baza'* ]]
+}
+
+@test 'protection saves exact old rules and restores them after changing the profile' {
+  export MOCK_MODE=rules
+  run nik ochrona budowanie --potwierdz
+  [ "$status" -eq 0 ]; [ -f "$NIK_STATE/protection/minecraft.json" ]
+  [[ $(cat "$MOCK_STATE") == *$'fire_spread_radius_around_player\t0'* ]]
+  run nik ochrona status
+  [ "$status" -eq 0 ]; [[ $output == *'Niszczenie przez moby: wyłączone'* ]]
+  run nik ochrona budowanie --potwierdz
+  [ "$status" -eq 2 ]
+  run nik ochrona wylacz --potwierdz
+  [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/protection/minecraft.json" ]
+  [[ $(cat "$MOCK_STATE") == *$'fire_spread_radius_around_player\t128'* && $(cat "$MOCK_STATE") == *$'mob_griefing\ttrue'* ]]
+}
+@test 'partially failed protection preserves originals and can be recovered' {
+  export MOCK_MODE=rules MOCK_RULE_FAIL=tnt_explodes
+  run nik ochrona budowanie --potwierdz
+  [ "$status" -eq 1 ]; [ -f "$NIK_STATE/protection/minecraft.json" ]
+  unset MOCK_RULE_FAIL
+  run nik ochrona wylacz --potwierdz
+  [ "$status" -eq 0 ]; [[ $(cat "$MOCK_STATE") == *$'mob_griefing\ttrue'* && $(cat "$MOCK_STATE") == *$'fire_spread_radius_around_player\t128'* ]]
+}
+@test 'rescue heals before teleport and removes the movement lock after reaching safety' {
+  printf 'baza\t1\t64\t2\tminecraft:overworld\n' >> "$NIK_CONFIG/places.tsv"
+  run nik ratunek g1 baza --podglad
+  [ "$status" -eq 0 ]
+  health=$(printf '%s\n' "$output" | awk '/instant_health/{print NR}')
+  tp=$(printf '%s\n' "$output" | awk '/run tp PlayerOne/{print NR}')
+  thaw=$(printf '%s\n' "$output" | awk '/movement_speed modifier remove/{print NR}')
+  [ "$health" -lt "$tp" ]; [ "$tp" -lt "$thaw" ]; [ ! -e "$MOCK_CALLS" ]
 }

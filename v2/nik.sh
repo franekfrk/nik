@@ -6,6 +6,7 @@ if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
     source "${_nik_v2_entry%/*}/lib/colors.sh"
     source "${_nik_v2_entry%/*}/lib/completion.sh"
     nik_skroty
+    source "${_nik_v2_entry%/*}/lib/ui.sh"
     source "${_nik_v2_entry%/*}/lib/banner.sh"
     if [[ $- == *i* ]]; then nik_baner "$_nik_v2_entry"; fi
     return 0
@@ -18,7 +19,7 @@ source "$NIK_ROOT/lib/colors.sh"
 # shellcheck source=lib/helpers.sh
 source "$NIK_ROOT/lib/helpers.sh"
 trap 'nik_unexpected "$?" "$LINENO"' ERR
-for module in config players items enchantments effects rcon display extras travel adventures commands; do
+for module in config players items enchantments effects rcon display ui extras travel adventures family commands; do
     # shellcheck disable=SC1090
     source "$NIK_ROOT/lib/$module.sh"
 done

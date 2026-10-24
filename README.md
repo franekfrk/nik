@@ -4,7 +4,7 @@
 
 Polskie komendy Minecraft Java w terminalu Bash: przedmioty, zaklęcia, efekty,
 teleporty, tryby gry, własne zestawy i kopie świata. Kolorowe listy i baner,
-podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.3.0**.
+podpowiedzi Tab oraz sugestie przy literówkach. Aktualna wersja: **2.4.0**.
 
 **Rozwijany jest NIK v2 w katalogu [`v2/`](v2/).** NIK v1 jest archiwalny,
 bez dalszego rozwoju. Jego kod i dotychczasowa dokumentacja znajdują się
@@ -38,6 +38,42 @@ Katalog dla Minecraft Java **26.3** obejmuje 1657 przedmiotów, 43 zaklęcia
 z polskimi i angielskimi nazwami oraz 40 efektów. Starsze nazwy przedmiotów
 pozostają aliasami. Dane i reguły pochodzą z rejestrów oraz tłumaczeń vanilla.
 Niestandardowe datapacki mogą wymagać osobnych zmian.
+
+## Nowe w 2.4 — wygoda i wspólne przygody
+
+```bash
+ratunek g1                  # dom, leczenie i 30 s ochrony przed ogniem
+napraw g1                   # trzymana rzecz, bez utraty nazwy i zaklęć
+pogoda slonce 10m
+efekt g1 sila 1h 2
+punkt lista
+punkt usun baza --potwierdz
+ender g1
+fajerwerki g1
+zadanie g1 "Zbuduj latarnię przy porcie"
+ochrona budowanie --potwierdz
+```
+
+Pomoc ma komendy pogrupowane tematycznie, minecraftowe ramki, zawijane opisy
+i tęczowy podpis. Status, słowniki, ekwipunki i punkty mają wspólną oprawę.
+Układ dopasowuje się także do wąskiego terminala, a opcje pozostają po polsku.
+
+Ratunek wymaga zapisanego miejsca (`dom` lub podanej nazwy). Odporność zapobiega
+obrażeniom od ognia; płomienie mogą pozostać widoczne do wygaśnięcia lub wejścia
+do wody. Naprawa zmienia wyłącznie uszkodzenie przedmiotu. `ender` pokazuje
+27 slotów, a czasy `s`, `m`, `h` działają przy pogodzie i efektach.
+
+Fajerwerki są pokazem cząsteczek i dźwięku bez obrażeń. Zadanie trafia do gracza
+jako książka **Zadanie od Taty**, do otwarcia w grze; dłuższe treści mają strony.
+`zadanie g1 pokaz`, `ksiazka`, `gotowe` i `usun --potwierdz` zarządzają zapisem.
+Wydane książki nie aktualizują się automatycznie.
+
+Profil budowania zmienia cztery reguły świata: niszczenie przez moby i pociski,
+wybuchy TNT oraz rozprzestrzenianie ognia. `ochrona status` pokazuje reguły,
+a `ochrona wylacz --potwierdz` przywraca ich dokładne wartości sprzed zmiany.
+Profil nie włącza się sam przy instalacji. Działa w całym świecie, więc wymaga
+potwierdzenia. Zapisane zadania, miejsca i kopie reguł pozostają prywatne.
+Szczegóły oraz ograniczenia opisuje [README v2](v2/README.md).
 
 ## Instalacja na serwerze
 

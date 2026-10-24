@@ -8,27 +8,38 @@ nik_register() {
     NIK_HANDLERS[$1]=$2; NIK_DESTRUCTIVE[$1]=$3; NIK_USAGE[$1]=$4; NIK_DESCRIPTIONS[$1]=$5
 }
 nik_help() {
-    local name=${1:-} cmd
-    nik_message 1 title '\n⛏  NIK v2 — polskie komendy Minecraft\n'
-    nik_message 1 frame '   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+    local name=${1:-} cmd group
+    local -a groups=('PRZEDMIOTY I EKWIPUNEK' 'PODRÓŻE I RATUNEK' 'GRACZE I EFEKTY' 'OD TATY DLA FRANKA' 'ŚWIAT I STWORZENIA' 'SŁOWNIKI I WYSZUKIWANIE' 'SERWER I POZOSTAŁE')
+    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.4'
     if [[ -n $name ]]; then
         [[ -v NIK_USAGE[$name] ]] || nik_die "Nieznana komenda: $name"
-        nik_message 1 command '  nik %s\n' "${NIK_USAGE[$name]}"
-        nik_message 1 text '  %s\n' "${NIK_DESCRIPTIONS[$name]}"
+        nik_section 'JAK UŻYWAĆ'
+        nik_ui_text "nik ${NIK_USAGE[$name]}" command
+        nik_ui_text "${NIK_DESCRIPTIONS[$name]}"
     else
-        while IFS= read -r cmd; do
-            nik_message 1 command '  %-15s ' "$cmd"
-            nik_message 1 text '%s\n' "${NIK_DESCRIPTIONS[$cmd]}"
-        done < <(printf '%s\n' "${!NIK_HANDLERS[@]}" | sort)
+        nik_ui_text 'Wybierz komendę. Tab podpowiada nazwy, graczy i przedmioty.' muted
+        for group in "${groups[@]}"; do
+            nik_section "$group"
+            while IFS= read -r cmd; do
+                nik_help_group "$cmd"
+                [[ $REPLY != "$group" ]] || nik_help_row "$cmd" "${NIK_DESCRIPTIONS[$cmd]}"
+            done < <(printf '%s\n' "${!NIK_HANDLERS[@]}" | sort)
+        done
     fi
-    nik_message 1 gold '\n  Opcje: --konfiguracja KATALOG, --podglad, --potwierdz, --pomoc, --wersja\n'
+    nik_section 'OPCJE'
+    nik_help_row --podglad 'Pokaż plan bez wykonywania zmian.'
+    nik_help_row --potwierdz 'Potwierdź operację wymagającą zgody.'
+    nik_help_row --konfiguracja 'KATALOG — wybierz własną konfigurację.'
+    nik_help_row --pomoc 'Pomoc ogólna lub dla wybranej komendy.'
+    nik_help_row --wersja 'Pokaż wersję NIK.'
+    nik_help_row --rozszerzenia 'KATALOG — wczytaj własne moduły.'
     nik_signature
 }
 # shellcheck disable=SC2153
 nik_cmd_players() {
     nik_args 0 "$@"
     local name alias shortcuts
-    nik_message 1 title '\nGRACZE\n\n'
+    nik_section 'GRACZE'
     while IFS= read -r name; do
         shortcuts=''
         for alias in "${!NIK_ALIASES[@]}"; do
@@ -81,7 +92,7 @@ nik_cmd_home() { nik_args 1 "$@"; [[ -v NIK_PLACES[dom] ]] || nik_die 'Brak miej
 nik_cmd_castle() { nik_args 1 "$@"; [[ -v NIK_PLACES[zamek] ]] || nik_die 'Brak miejsca zamek.'; nik_cmd_tp "$1" zamek; }
 nik_cmd_place() {
     case ${1:-lista} in
-        lista) (($# <= 1)) || nik_die 'Użycie: miejsce lista'; local name; for name in "${!NIK_PLACES[@]}"; do nik_message 1 command '%-15s  %s\n' "$name" "${NIK_PLACES[$name]}"; done ;;
+        lista) (($# <= 1)) || nik_die 'Użycie: miejsce lista'; nik_places_table ;;
         dodaj)
             nik_args 6 "$@"; nik_id "$2"; [[ ! -v NIK_PLAYERS[$2] && ! -v NIK_ALIASES[$2] ]] || nik_die 'Nazwa miejsca koliduje z graczem.'; nik_coord "$3"; nik_coord "$4"; nik_coord "$5"; nik_dimension "$6"
             [[ $3 != [~^]* && $4 != [~^]* && $5 != [~^]* && ! -v NIK_PLACES[$2] ]] || nik_die 'Miejsce istnieje lub współrzędne nie są absolutne.'
@@ -101,7 +112,7 @@ nik_cmd_effect() {
     if [[ $2 == leczenie ]]; then nik_args 2 "$@"; nik_cmd_health "$1"; return; fi
     nik_player "$1"; local player=$REPLY
     nik_effect "$2"; local effect=$REPLY
-    nik_uint "${3:-30}" 1 1000000; local duration=$REPLY
+    nik_duration "${3:-30}" 1 1000000; local duration=$REPLY
     local max_level=256
     [[ $effect != instant_health && $effect != instant_damage ]] || max_level=10
     nik_uint "${4:-1}" 1 "$max_level"; local amplifier=$((REPLY-1))
@@ -139,7 +150,14 @@ nik_cmd_lightning() { nik_args 1 "$@"; nik_player "$1"; nik_rcon "execute at $RE
 nik_cmd_explosion() { nik_args 1 "$@"; nik_player "$1"; nik_rcon "execute at $REPLY run summon minecraft:creeper ~ ~ ~ {Fuse:0s,ignited:1b}"; }
 nik_cmd_day() { nik_args 0 "$@"; nik_rcon 'time set day' || return "$?"; nik_rcon 'weather clear'; }
 nik_cmd_night() { nik_args 0 "$@"; nik_rcon 'time set night'; }
-nik_cmd_weather() { nik_args 1 "$@"; local weather; case $1 in czysto|clear) weather=clear ;; deszcz|rain) weather=rain ;; burza|thunder) weather=thunder ;; *) nik_die 'Pogoda: czysto, deszcz, burza.' ;; esac; nik_rcon "weather $weather"; }
+nik_cmd_weather() {
+    (($# == 1 || $# == 2)) || nik_die 'Użycie: pogoda slonce|deszcz|burza [CZAS]'
+    local weather duration=''
+    nik_normalize_name "$1"
+    case $REPLY in slonce|czysto|clear) weather=clear ;; deszcz|rain) weather=rain ;; burza|thunder) weather=thunder ;; *) nik_die 'Pogoda: slonce, deszcz, burza.' ;; esac
+    if (($# == 2)); then nik_duration "$2" 1 1000000; duration=" ${REPLY}s"; fi
+    nik_rcon "weather $weather$duration"
+}
 nik_cmd_storm() { nik_args 0 "$@"; nik_cmd_weather burza; }
 nik_cmd_save() { nik_args 0 "$@"; nik_rcon 'save-all flush'; }
 nik_cmd_online() { nik_args 0 "$@"; nik_rcon list; }
@@ -156,10 +174,18 @@ nik_cmd_restart() {
 }
 nik_cmd_status() {
     nik_args 0 "$@"
-    nik_message 1 command 'Konfiguracja: OK\nGracze: %s\nMiejsca: %s\nKontener: %s\nLog: %s\n' "${#NIK_PLAYERS[@]}" "${#NIK_PLACES[@]}" "$NIK_CONTAINER" "$NIK_LOG"
-    if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] pominięto kontrolę Docker/RCON\n'; return; fi
+    nik_panel 'NIK • PANEL SERWERA' 'Stan połączenia i prywatnej konfiguracji'
+    nik_section 'KONFIGURACJA'
+    nik_ui_text 'Konfiguracja: OK' success
+    nik_ui_text "Gracze: ${#NIK_PLAYERS[@]} | Miejsca: ${#NIK_PLACES[@]}" command
+    nik_ui_text "Kontener: $NIK_CONTAINER"
+    nik_ui_text "Log: $NIK_LOG" muted
+    nik_section 'MINECRAFT'
+    if ((NIK_DRY_RUN)); then nik_ui_text '[podgląd] pominięto kontrolę Docker/RCON' gold; return; fi
     nik_check || return "$?"
-    nik_rcon list
+    nik_rcon list >/dev/null || return "$?"
+    nik_ui_text 'Docker: działa • RCON: połączony' success
+    nik_ui_text "$NIK_RCON_RESPONSE"
 }
 nik_cmd_equip() {
     (($# == 1 || $# == 2)) || nik_die 'Użycie: wyposaz GRACZ [ZESTAW]'
@@ -195,7 +221,14 @@ nik_cmd_rotate() (
     if awk -v cutoff="$cutoff" '$1 >= cutoff' "$NIK_LOG" > "$tmp" && mv -- "$tmp" "$NIK_LOG"; then return 0; else rm -f -- "$tmp"; return 1; fi
 )
 nik_registry() {
-    nik_register punkt nik_cmd_point 0 'punkt GRACZ NAZWA' 'Zapisz aktualną pozycję gracza jako nazwane miejsce.'
+    nik_register ratunek nik_cmd_rescue 0 'ratunek GRACZ [MIEJSCE]' 'Ratunek do domu lub punktu: ochrona przed ogniem, odmrożenie i leczenie.'
+    nik_register napraw nik_cmd_repair 0 'napraw GRACZ' 'Napraw trzymany przedmiot z zachowaniem jego danych.'
+    nik_register ender nik_cmd_ender 0 'ender GRACZ' 'Podgląd skrzyni Endera wskazanego gracza.'
+    nik_register fajerwerki nik_cmd_fireworks 0 'fajerwerki GRACZ' 'Kolorowy pokaz cząsteczek i dźwięku bez obrażeń.'
+    nik_register zadanie nik_cmd_quest 0 'zadanie GRACZ [TREŚĆ | pokaz | ksiazka | gotowe | usun]' 'Zadanie od Taty w prywatnej książce, do odczytu w grze.'
+    nik_register ochrona nik_cmd_protection 0 'ochrona [status | budowanie | wylacz]' 'Profil reguł świata; zmiany wymagają --potwierdz.'
+
+    nik_register punkt nik_cmd_point 0 'punkt GRACZ NAZWA | lista | usun NAZWA' 'Zapisz aktualną pozycję gracza jako nazwane miejsce.'
     nik_register plecak nik_cmd_inventory 0 'plecak GRACZ' 'Czytelny podgląd przedmiotów i zaklęć w plecaku.'
     nik_register napis nik_cmd_title 0 'napis GRACZ TREŚĆ...' 'Duży złoty tytuł z podpisem Od Taty ♥.'
     nik_register przywolaj nik_cmd_summon 0 'przywolaj GRACZ STWORZENIE | co' 'Przywołaj jedno stworzenie 2 bloki obok gracza; boss wymaga --potwierdz.'
@@ -235,7 +268,7 @@ nik_registry() {
     nik_register zapisz nik_cmd_save 0 'zapisz' 'Zapisz świat.'
     nik_register dzien nik_cmd_day 0 'dzien' 'Ustaw dzień i czystą pogodę.'
     nik_register noc nik_cmd_night 0 'noc' 'Ustaw noc.'
-    nik_register pogoda nik_cmd_weather 0 'pogoda czysto|deszcz|burza' 'Zmień pogodę.'
+    nik_register pogoda nik_cmd_weather 0 'pogoda slonce|deszcz|burza [CZAS]' 'Zmień pogodę, opcjonalnie na 30s, 10m, 1h.'
     nik_register burza nik_cmd_storm 0 'burza' 'Rozpocznij burzę.'
     nik_register online nik_cmd_online 0 'online' 'Pokaż graczy online.'
     nik_register status nik_cmd_status 0 'status' 'Sprawdź konfigurację, kontener i RCON.'
@@ -254,7 +287,9 @@ nik_completion_candidates() {
     if [[ $position == 1 ]]; then
         case $command in
             szukaj) nik_item_candidates "$current"; return ;;
-            pogoda) words=(czysto deszcz burza) ;;
+            pogoda) words=(slonce czysto deszcz burza) ;;
+            ochrona) words=(status budowanie wylacz) ;;
+            punkt) words=(lista usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             kopia) words=(utworz lista) ;;
             przywroc) for word in "$NIK_ROOT"/world-backups/*.json; do [[ -f $word ]] || continue; word=${word##*/}; words+=("${word%.json}"); done ;;
             zestaw) words=(lista pokaz zapisz "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
@@ -264,6 +299,9 @@ nik_completion_candidates() {
         esac
     elif [[ $position == 2 ]]; then
         case $command in
+            ratunek) words=("${!NIK_PLACES[@]}") ;;
+            punkt) words=("${!NIK_PLACES[@]}") ;;
+            zadanie) words=(pokaz ksiazka gotowe usun) ;;
             przywolaj) words=("${!NIK_CREATURES[@]}" "${!NIK_CREATURE_IDS[@]}" "${!NIK_CREATURE_ALIASES[@]}") ;;
             zaklnij) words=("${!NIK_ENCHANT_NAMES[@]}" "${!NIK_ENCHANT_MAX[@]}") ;;
             daj|encik) nik_item_candidates "$current"; return ;;
@@ -289,7 +327,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.3.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.4.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi

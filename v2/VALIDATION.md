@@ -1,6 +1,6 @@
 # NIK v2 — audyt i weryfikacja, 2026-10-24
 
-Wynik kontroli kodu lokalnie i na serwerze: **175/175 testy Bats**, `bash -n`, ShellCheck 0.11.0,
+Wynik kontroli kodu lokalnie i na serwerze: **192/192 testy Bats**, `bash -n`, ShellCheck 0.11.0,
 `py_compile` narzędzi Python i audyt całego katalogu danych.
 
 ## Znalezione i poprawione problemy
@@ -69,7 +69,7 @@ bez nadpisywania slotów, podpowiedzi literówek i polskie opcje z aliasami angi
 Testy Bats obejmują nowe komendy, walidację całego zestawu przed wykonaniem,
 kontrolę błędów gry i uzupełnianie Tab.
 
-28 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
+35 testów Python uruchamia rzeczywisty kod archiwizacji i przywracania na
 izolowanym modelu Dockera oraz osobnym katalogu świata. Obejmują zgodność zawartości,
 kopię przed przywracaniem, zastępowanie starych plików, osobne wymiary,
 błędne archiwum, dowiązania, wyjście poza katalog, błąd archiwizacji, błąd
@@ -135,3 +135,40 @@ stworzeń i nie wyświetlano nic prawdziwym graczom. Log:
 `~/.nik/logs/features-23-parser-check.log`. W czasie kontroli żaden skonfigurowany
 gracz nie był online; wygląd napisu i rzeczywisty odczyt jego plecaka wymagają
 potwierdzenia w kliencie gry. Testy parsera SNBT korzystają z danych testowych.
+
+## Rozszerzenia 2.4
+
+Dodano ratunek, naprawę w ręce, czasy s/m/h, listę i usuwanie punktów,
+podgląd EnderItems, dekoracyjne fajerwerki, zadania w książkach i odwracalny
+profil reguł świata. Nowy moduł ui.sh grupuje pomoc, zawija opisy i buduje
+panele dopasowane do terminala. Zachowano kolory, NO_COLOR, tęczowy podpis,
+skróty, opcje PL/EN oraz uzupełnianie Tab.
+
+17 nowych testów Bats obejmuje jednostki czasu i błędy, plan i kolejność ratunku,
+naprawę tylko komponentu uszkodzeń, Ender Chest, potwierdzanie usuwania miejsc,
+zadania i prywatne pliki, odporność na błędy wydania książki, ochronę reguł,
+odzyskanie po częściowej awarii, kontekstowe podpowiedzi i układ 40-kolumnowy.
+7 nowych testów Python sprawdza tożsamość prywatnych rekordów, dosłowną treść
+książek, stronicowanie, oryginalne wartości reguł i odrzucanie uszkodzonego stanu.
+
+Uruchomiono dodatkowy serwer vanilla 26.3 w osobnym kontenerze, bez sieci i
+publikowanych portów, z osobnym światem. Na prawdziwym silniku sprawdzono:
+- naprawę miecza z damage 500 do 0 przy identycznych pozostałych danych,
+  w tym zaklęciach, nazwie, typie, liczbie i custom_data;
+- zapis książki z zadaniem jako written_book_content z polskimi znakami;
+- włączenie czterech reguł przez prawdziwe CLI i dokładne przywrócenie ich wartości.
+
+Przedmioty trzymał testowy armor stand; testy nie zastępowały ekwipunku gracza.
+Po próbach kontener i świat zostały usunięte. Log wyniku na serwerze:
+`~/.nik/logs/features-24-real-game-check.log`. Produkcyjny świat nie był zmieniany.
+Silnik i parser nie potwierdzają wyglądu książki, cząsteczek ani dźwięku w
+kliencie Bedrock/Geyser; ten zakres wymaga wejścia gracza do gry.
+
+Dodatkowo produkcyjny parser Minecrafta przyjął 27 wygenerowanych poleceń,
+w tym czasy pogody i efektów, naprawę inline, odczyt EnderItems, cząsteczki,
+dźwięki, książkę i reguły. Kontrola negatywna z dawnym polem function zamiast
+type została odrzucona. Użyto execute as @s po potwierdzeniu braku encji
+konsoli, więc nie wykonano zmian w produkcyjnym świecie. Log:
+`~/.nik/logs/features-24-parser-check.log`. Układ pomocy obejrzano także na
+kolorowym renderze 80-kolumnowym i sprawdzono testami w szerokości 40 znaków.
+Ramki używają podstawowych znaków box drawing, bez wymagania fontu emoji.
