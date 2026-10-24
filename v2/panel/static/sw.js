@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='nik-mobile-shell-8';
+const CACHE='nik-mobile-shell-9';
 const SHELL=['/','/app.css','/app.js','/enhancements.js','/enhancements.css','/icons.css','/icons.json','/icons-items.png','/icons-creatures.png','/icon.svg','/terrain.svg','/manifest.webmanifest','/icon-192.png','/icon-512.png','/apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('nik-mobile-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

@@ -312,3 +312,14 @@ niespójności zwraca jasny błąd bez częściowego wyniku graficznego.
 Sześć testów JavaScript sprawdza otwieranie historii podczas pracy, zachowanie
 wyniku po zakończeniu zadania w tle, powrót do jego postępu, spóźnione odpowiedzi
 HTTP, błąd transportu i odpowiedź przychodzącą po wylogowaniu.
+
+## Wydanie 2.9.0 / Mobile 1.5
+
+154 testy Python, 8 testów JavaScript oraz 231 testów Bats obejmują m.in.
+niezależne śledzenie wielu operacji, zachowanie widoku historii, zapis parametrów
+bez potwierdzeń i nieznanych pól, anulowanie kolejki bez wywołania NIK,
+natychmiastowe zwolnienie jej miejsca i wyścig z uruchomieniem zadania.
+Testy interfejsu w przeglądarce potwierdzają dodawanie drugiego zadania w tle,
+anulowanie oczekującego, formularz powtórzenia, zmianę kolejności i zapis kroków,
+podgląd NIK oraz rozwijane wyniki kroków. Operacje zmieniające grę testowano
+na atrapie Docker/RCON; serwer produkcyjny sprawdzany jest odczytami i podglądem.

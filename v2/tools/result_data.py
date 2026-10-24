@@ -13,3 +13,9 @@ def write_result(value):
   os.fchmod(fd,0o600);os.ftruncate(fd,0)
   with os.fdopen(fd,'w',closefd=False) as out:json.dump(value,out,ensure_ascii=False)
  finally:os.close(fd)
+
+if __name__=='__main__':
+ import sys
+ if len(sys.argv)==4 and sys.argv[1]=='error':
+  write_result({'type':'error','kind':sys.argv[2],'message':sys.argv[3],'details':sys.stdin.read(1048576)})
+ else:raise SystemExit(2)

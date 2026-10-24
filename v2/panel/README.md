@@ -212,3 +212,22 @@ preferencje i własne scenariusze nie trafiają do publicznego repozytorium ani 
 Podczas działania zadania w tle można otwierać wyniki zakończonych działań.
 Postęp i zakończenie zadania w tle nie zastępują aktualnie oglądanego wyniku.
 Do bieżącej operacji wrócisz przez jej wpis w kolejce.
+
+## Kolejka, powtarzanie i edytor scenariuszy (Mobile 1.5)
+
+Po „Zostaw w tle” wybieraj następne akcje. Każda ma własny identyfikator i wynik;
+panel śledzi je osobno także po odświeżeniu. Przyjętych może być do sześciu zadań,
+wykonywanych kolejno. Zadania nie są ponawiane automatycznie.
+Przy oczekującym wpisie użyj „Anuluj”. Zwolni to miejsce w kolejce bez wywołania
+NIK. Administrator zalogowany tym samym wspólnym hasłem może anulować oczekujące
+zadanie z innej sesji; zatrzymanie uruchomionego procesu jest dostępne jego sesji.
+
+„Powtórz — sprawdź ustawienia” otwiera formularz, zachowuje tryb podglądu z wpisu
+i pozwala zmienić parametry. Potwierdzenie nie jest przechowywane. Historia
+zapisuje parametry wyłącznie w prywatnym SQLite; lista historii ich nie pobiera.
+Starsze wpisy bez tych danych nie oferują powtórzenia.
+
+Kroki planu przesuwasz strzałkami; dodajesz i usuwasz wiersze. W oknie uruchamiania
+scenariusza „Sprawdź plan bez zmian w grze” zleca NIK --podglad. Wynik każdego
+kroku ma rozwijane szczegóły. Polskie komunikaty błędów pochodzą z NIK, a surowe
+odpowiedzi gry pozostają dostępne do diagnozy.

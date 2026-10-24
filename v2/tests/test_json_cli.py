@@ -52,7 +52,7 @@ class JsonTests(Fixture,unittest.TestCase):
   for case in ['truncated','truncated_item']:
    self.env['NIK_TEST_CASE']=case;result=self.run_nik('--json','plecak','g1');self.assertEqual(result.returncode,0,result.stdout+result.stderr);sword=next(r for r in json.loads(result.stdout)['result']['slots'] if r['slot']==0);self.assertEqual(sword['damage'],161);self.assertEqual(sword['max_damage'],1000);self.assertEqual(len(sword['enchantments']),2)
  def test_offline_is_an_error_and_empty_is_a_valid_empty_inventory(self):
-  self.env['NIK_TEST_CASE']='offline';result=self.run_nik('--json','plecak','g1');data=json.loads(result.stdout);self.assertFalse(data['ok']);self.assertIsNone(data['result'])
+  self.env['NIK_TEST_CASE']='offline';result=self.run_nik('--json','plecak','g1');data=json.loads(result.stdout);self.assertFalse(data['ok']);self.assertEqual(data['result']['kind'],'player_offline')
   self.env['NIK_TEST_CASE']='empty';result=self.run_nik('--json','plecak','g1');self.assertEqual(result.returncode,0,result.stdout);self.assertEqual(json.loads(result.stdout)['result']['slots'],[])
  def test_jsonl_has_live_progress_output_and_one_final_result(self):
   result=self.run_nik('--jsonl','plecak','g1');events=[json.loads(line) for line in result.stdout.splitlines()];self.assertEqual(events[-1]['type'],'result');self.assertEqual(sum(e['type']=='result' for e in events),1);self.assertTrue(any(e['type']=='progress' for e in events));self.assertTrue(any(e['type']=='output' for e in events));self.assertEqual(events[-1]['data']['code'],result.returncode)
@@ -66,6 +66,8 @@ class JsonTests(Fixture,unittest.TestCase):
   self.env['NIK_TEST_CASE']='changing_once';result=self.run_nik('--json','plecak','g1');self.assertEqual(result.returncode,0,result.stdout);self.assertEqual(len(json.loads(result.stdout)['result']['slots']),3)
  def test_continuously_changing_inventory_stops_without_partial_result(self):
   self.env['NIK_TEST_CASE']='changing_always';result=self.run_nik('--json','plecak','g1');data=json.loads(result.stdout);self.assertEqual(result.returncode,2);self.assertIsNone(data['result']);self.assertIn('bez przekładania',data['output'])
+ def test_game_error_has_a_polish_typed_message_and_original_details(self):
+  self.env['NIK_TEST_CASE']='fail_give';result=self.run_nik('--json','daj','g1','diament','1');data=json.loads(result.stdout);self.assertNotEqual(result.returncode,0);self.assertEqual(data['result']['kind'],'unsupported_command');self.assertIn('Serwer nie rozpoznaje',data['result']['message']);self.assertIn('Unknown or incomplete command',data['result']['details'])
  def test_literal_shell_text_is_not_executed(self):
   marker=self.base/'MUST_NOT_EXIST';result=self.run_nik('--json','tata','g1','$(touch '+str(marker)+')');self.assertEqual(result.returncode,0,result.stdout);self.assertFalse(marker.exists());self.assertTrue(json.loads(result.stdout)['ok'])
 if __name__=='__main__':unittest.main()

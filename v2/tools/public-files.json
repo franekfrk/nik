@@ -104,6 +104,7 @@
   "tests/test_result_data.py",
   "tests/test_result_view.js",
   "tests/test_scenarios.py",
+  "tests/test_workflows.py",
   "tests/test_world_backup.py",
   "tools/audit-items.py",
   "tools/audit-project.py",

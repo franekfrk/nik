@@ -62,3 +62,9 @@ w prywatnym SQLite; te pliki nie należą do publicznej paczki.
 Scenariusze są danymi konfiguracji: argumenty przechodzą przez parser bez powłoki,
 listę dozwolonych komend i podgląd NIK wszystkich kroków przed wykonaniem.
 Błąd zatrzymuje kolejne kroki; już wykonane zmiany pozostają w grze.
+
+Mobile 1.5 przechowuje parametry do ręcznego powtórzenia w tym samym prywatnym
+SQLite. Potwierdzenia i nieznane pola żądania są pomijane; powtórzenie otwiera
+formularz i wymaga nowej decyzji. Parametry nie są wysyłane w skrótowej liście
+historii i nie należą do paczek. Anulowanie oczekującej operacji jest dostępne
+zalogowanemu administratorowi wspólnego panelu; nie uruchamia komendy NIK.

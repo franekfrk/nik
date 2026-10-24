@@ -3,7 +3,7 @@ import json,os,sqlite3,stat,threading
 from pathlib import Path
 from contextlib import contextmanager
 
-FIELDS=('id','state','output','code','label','preview','action','player','timestamp','command','result','progress')
+FIELDS=('id','state','output','code','label','preview','action','player','timestamp','command','result','progress','request')
 LIMIT=100
 
 class History:
@@ -47,7 +47,7 @@ class History:
  def list(self):
   with self.lock,self.connect() as db:
    # Only summaries leave the server until an administrator opens a result.
-   return [{k:v for k,v in json.loads(row[0]).items() if k not in {'output','result'}} for row in db.execute('SELECT payload FROM history ORDER BY timestamp DESC,id DESC')]
+   return [{k:v for k,v in json.loads(row[0]).items() if k not in {'output','result','request'}} for row in db.execute('SELECT payload FROM history ORDER BY timestamp DESC,id DESC')]
  def get(self,id):
   with self.lock,self.connect() as db:
    row=db.execute('SELECT payload FROM history WHERE id=?',(id,)).fetchone()

@@ -64,11 +64,11 @@ class App:
     return existing
    if len(self.jobs)>=200 or not self.slots.acquire(blocking=False):raise HTTPError(429,'Kolejka jest pełna. Poczekaj na zakończenie czynności.')
    id=secrets.token_urlsafe(18)
-   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False),'action':data['action'],'player':data.get('player','') if data['action'] not in bridge.GLOBAL else '', 'timestamp':time.time(),'command':args[0],'result':None,'progress':[]}
+   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False),'action':data['action'],'player':data.get('player','') if data['action'] not in bridge.GLOBAL else '', 'timestamp':time.time(),'command':args[0],'result':None,'progress':[],'request':bridge.replay_request(data)}
    try:
     self.history.put(self.jobs[id])
     self.keys[owner,key]=id
-    self.pool.submit(self.run_job,id,dict(data))
+    self.jobs[id]['future']=self.pool.submit(self.run_job,id,dict(data))
    except Exception:
     try:
      self.jobs[id].update(state='error',code=None,output='Komenda nie została uruchomiona: nie udało się przygotować kolejki.')
@@ -145,17 +145,22 @@ class App:
   records=self.history.list()
   with self.lock:
    for record in records:
-    if record['id'] in self.jobs:record.update({key:self.jobs[record['id']].get(key,[] if key=='progress' else None) for key in FIELDS if key not in {'output','result'}})
+    if record['id'] in self.jobs:record.update({key:self.jobs[record['id']].get(key,[] if key=='progress' else None) for key in FIELDS if key not in {'output','result','request'}})
   return records
- def cancel(self,id,owner):
-  self.view(id,owner)
+ def cancel(self,id,owner,queued_only=False):
   with self.lock:
-   j=self.jobs[id]
+   j=self.jobs.get(id)
+   if not j or (j['owner']!=owner and j['state']!='queued'):raise HTTPError(404,'Nie znaleziono operacji do zatrzymania.')
+   if queued_only and j['state']!='queued':raise HTTPError(409,'Zadanie nie oczekuje już w kolejce. Sprawdź jego aktualny stan; niczego nie zatrzymano.')
    if j['state'] not in {'running','queued'}:return
-   if j['action']=='backup' and j['state']=='running':raise HTTPError(409,'Trwa kopia świata. Poczekaj na bezpieczne zakończenie i uruchomienie serwera.')
-   j['state']='cancelled';j['output']='Zatrzymano oczekiwanie i proces NIK. Wcześniejsze kroki mogły zostać wykonane.';p=j.get('process')
+   queued=j['state']=='queued'
+   if j['action']=='backup' and not queued:raise HTTPError(409,'Trwa kopia świata. Poczekaj na bezpieczne zakończenie i uruchomienie serwera.')
+   j['state']='cancelled';j['output']='Anulowano oczekujące zadanie. Komenda nie została uruchomiona.' if queued else 'Zatrzymano proces NIK. Wcześniejsze kroki mogły zostać wykonane.';p=j.get('process')
+   cancelled_future=queued and j.get('future') is not None and j['future'].cancel()
+   if cancelled_future:self.slots.release()
    self.history.put(j)
   if p:self.stop(p)
+
 
 
 class JobEvents:
@@ -276,7 +281,9 @@ class Handler(BaseHTTPRequestHandler):
     app.history.delete_favorite(path.split('/')[3]);self.response(200,{'ok':True});return
    if path=='/api/jobs':
     id=app.job(owner,data.get('request'),data.get('key'));self.response(202,{'id':id});return
-   if re.fullmatch('/api/jobs/[A-Za-z0-9_-]+/cancel',path):app.cancel(path.split('/')[3],owner);self.response(200,{'ok':True});return
+   if re.fullmatch('/api/jobs/[A-Za-z0-9_-]+/cancel',path):
+    if type(data.get('queued_only',False)) is not bool:raise bridge.InputError('Nieprawidłowy tryb anulowania.')
+    app.cancel(path.split('/')[3],owner,data.get('queued_only',False));self.response(200,{'ok':True});return
    raise HTTPError(404,'Nie znaleziono czynności.')
   if path=='/api/session':
    _,s=self.authenticated();self.response(200,{'csrf':s['csrf']});return

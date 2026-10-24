@@ -8,6 +8,23 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.9.0 / Mobile 1.5 — kolejka i scenariusze
+
+- Dodawaj kolejne akcje, gdy poprzednia pracuje w tle. Serwer wykonuje jedną
+  operację naraz, a kolejka mieści maksymalnie sześć przyjętych zadań.
+- „Powtórz” w wyniku otwiera formularz z zapisanymi parametrami. Nie wykonuje
+  polecenia automatycznie; potwierdzenie trzeba zaznaczyć ponownie.
+- Anuluj oczekującą akcję przed uruchomieniem NIK. Zatrzymanie już uruchomionej
+  czynności nie cofa wcześniejszych zmian.
+- Edytor scenariuszy ma osobne wiersze, dodawanie, usuwanie i strzałki kolejności.
+  „Sprawdź plan” wywołuje podgląd NIK. Wynik pokazuje też odpowiedź każdego kroku.
+- NIK przekazuje polskie opisy rozpoznanych błędów, np. brak gracza online,
+  nieobsługiwana komenda, pusta ręka lub timeout. Oryginalna odpowiedź pozostaje
+  w szczegółach.
+
+Starsze wpisy historii bez zapisanych parametrów nadal się otwierają, lecz nie
+mają przycisku powtórzenia. Parametry nie są odtwarzane z tekstu komend.
+
 ## NIK 2.8.0 — wygodniejszy terminal i panel
 
 - Graficzny plecak i skrzynia Endera: sloty, prawdziwe ikonki, ilości, wyposażenie,

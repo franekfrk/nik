@@ -60,6 +60,7 @@ nik_rcon() {
     fi
     if ((rc)); then
         nik_log ERROR "$command" || true
+        nik_rcon_error "$plain" "$rc"
         nik_message 2 error 'NIK: polecenie niepotwierdzone. Przerwano; wcześniejsze kroki mogły zostać wykonane.\n%s\n' "$output"
         return "$rc"
     fi
@@ -67,4 +68,18 @@ nik_rcon() {
     ((noop == 0)) || result=NOOP
     nik_log "$result" "$command" || { nik_message 2 error 'NIK: wykonano komendę, ale zapis wyniku do logu nie powiódł się.\n'; return 1; }
     if ((silent && noop)); then :; elif ((silent)); then nik_message 1 success 'Wysłano wiadomość od Taty.\n'; elif ((noop)); then nik_message 1 muted 'Brak blokady/efektu do usunięcia.\n'; else nik_message 1 success '%s\n' "$output"; fi
+}
+
+nik_rcon_error() {
+    local response=${1,,} code=$2 kind=command_error hint='Minecraft nie zaakceptował polecenia. Sprawdź szczegóły odpowiedzi.'
+    if [[ $code == 124 ]]; then kind=timeout; hint='Minecraft nie odpowiedział na czas. Sprawdź status serwera przed ponowieniem.'
+    elif [[ $response == *'no entity was found'* || $response == *'no player was found'* || $response == *'no entities were found'* ]]; then kind=player_offline; hint='Nie znaleziono gracza w grze. Sprawdź, czy jest online i czy wybrano właściwego gracza.'
+    elif [[ $response == *'unknown or incomplete command'* ]]; then kind=unsupported_command; hint='Serwer nie rozpoznaje tego polecenia. Sprawdź zgodność wersji Minecrafta i NIK.'
+    elif [[ $response == *'not enchanted'* || $response == *'cannot support that enchantment'* ]]; then kind=enchantment; hint='Nie można dodać tego zaklęcia do wybranego przedmiotu.'
+    elif [[ $response == *'not holding'* ]]; then kind=empty_hand; hint='Weź odpowiedni przedmiot do głównej ręki i spróbuj ponownie.'
+    fi
+    nik_message 2 error 'NIK: %s\n' "$hint"
+    if [[ -n ${NIK_RESULT_PATH:-} ]]; then
+        printf '%s' "$1" | python3 "$NIK_ROOT/tools/result_data.py" error "$kind" "$hint"
+    fi
 }
