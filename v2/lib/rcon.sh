@@ -31,6 +31,7 @@ nik_rcon() {
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
     # Abort before mutation when audit logging is unavailable.
+    if [[ ${NIK_PROGRESS_GENERIC:-1} == 1 ]]; then nik_progress 'Łączę z Minecraftem i wykonuję kolejny krok.'; fi
     nik_log START "$command" || { nik_message 2 error 'NIK: nie można zapisać logu.\n'; return 1; }
     if nik_check; then :; else
         rc=$?; nik_log ERROR "$command" || true; return "$rc"

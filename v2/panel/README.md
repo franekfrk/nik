@@ -1,4 +1,4 @@
-# NIK Mobile 1.3 — nakładka WWW/PWA na NIK
+# NIK Mobile 1.4 — nakładka WWW/PWA na NIK
 
 NIK jest projektem opartym na Bashu, z polskimi komendami do Minecrafta.
 Dziecko lub gracz może korzystać z terminala — np. `daj g1 diament 16` — albo
@@ -179,3 +179,32 @@ Wszystkie dane Minecrafta i kopii pochodzą z komend NIK. SQLite przechowuje tyl
 stan interfejsu: historię i ulubione. Odczyty graczy i kopii również trafiają do
 kolejki i historii. Po wejściu panel odtwarza ostatni odczyt; użyj przycisku
 odświeżania, aby uzyskać aktualne dane. Gdy nie ma jeszcze odczytu, zleca pierwszy.
+
+
+## Graficzny plecak, postęp i własne plany (Mobile 1.4)
+
+„Zajrzyj do plecaka” i „Skrzynia Endera” pokazują sloty z lokalnymi ikonami.
+Kliknij rzecz, aby przeczytać zaklęcia, ilość i trwałość. Wyposażenie pochodzi
+z odczytu NIK, również z nowego pola equipment. Wynik tekstowy pozostaje dostępny
+pod przyciskiem. Stare wpisy historii, które zawierają tylko tekst, nadal się otwierają.
+
+Panel odczytuje strumień JSONL z NIK: wyświetla faktyczne komunikaty postępu
+i narastający wynik tekstowy, a po zakończeniu zachowuje dane graficzne w historii.
+Odświeżenie strony lub otwarcie wyniku na innym urządzeniu nie ponawia komendy.
+
+Przy ulubionej akcji użyj ołówka, aby zmienić nazwę, gracza i parametry. Formularz
+w tym trybie zapisuje ustawienia; nie wykonuje akcji w Minecraft. Strzałki zmieniają
+kolejność przycisków. Potwierdzenia wykonania nie są zapamiętywane w skrócie.
+
+Katalog ma gwiazdki i filtry „Ulubione” oraz „Ostatnie wybory”, osobno dla rzeczy
+i stworzeń. Do 100 gwiazdek i ostatnie 40 wyborów przechowuje prywatna baza panelu.
+
+Na pulpicie „Nowy plan” otwiera edytor scenariusza NIK. Jedna komenda w wierszu,
+1–12 kroków, a `{gracz}` oznacza wybranego gracza. Kliknięcie zapisanego planu
+pozwala go uruchomić dla wskazanego gracza; ołówek edytuje definicję. Zapis planu,
+walidacja i wykonanie są komendami NIK. Definicje znajdują się w prywatnym configu.
+
+Bashowy NIK odpowiada za parsowanie SNBT, trwałość, scenariusze i wykonanie.
+`panel/server.py` uruchamia jego CLI, a `enhancements.js` prezentuje przekazane
+wyniki. Katalog oraz układ ulubionych są ustawieniami interfejsu. Hasła, historia,
+preferencje i własne scenariusze nie trafiają do publicznego repozytorium ani ZIP-a.

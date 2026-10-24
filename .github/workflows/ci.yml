@@ -15,5 +15,6 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check panel/static/app.js
+          node --check panel/static/enhancements.js
           node --check panel/static/sw.js
       - run: bash tests/check.sh

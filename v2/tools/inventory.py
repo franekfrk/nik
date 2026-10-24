@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read vanilla SNBT inventory without eval, command execution, or external packages."""
-import json,re,sys,unicodedata
+import json,os,re,sys,unicodedata
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -69,25 +69,29 @@ def integer(value):
     assert isinstance(value,str) and re.fullmatch(r'-?\d+[bBsSlL]?',value),'Błędna liczba w ekwipunku'
     return int(re.sub('[bBsSlL]$','',value))
 
-def inventory_rows(raw,ender=False):
+class InventoryChanged(AssertionError):pass
+
+def inventory_rows(raw,ender=False,detailed=False):
     found=re.fullmatch(r'.+ has the following entity data: (.+)',raw.strip())
     assert found,'Nie rozpoznano odpowiedzi Minecrafta na odczyt plecaka'
     items=Snbt(found[1]).parse();assert isinstance(items,list),'Odpowiedź plecaka nie jest listą'
     assert len(items)<=(27 if ender else 41),'Za dużo pozycji ekwipunku'
     names={line.split('\t')[1]:line.split('\t')[0] for line in (ROOT/'data/items.tsv').read_text().splitlines()}
     enchants={line.split('\t')[1]:line.split('\t')[0] for line in (ROOT/'data/enchantment-names.tsv').read_text().splitlines()}
+    defaults={r.split('\t')[0]:int(r.split('\t')[1]) for r in (ROOT/'data/item-durability.tsv').read_text().splitlines()} if detailed else {}
     seen=set();rows=[]
     for entry in items:
         assert isinstance(entry,dict),'Błędny przedmiot w plecaku'
         slot=integer(entry.get('Slot',entry.get('slot')))
         if slot<0:slot+=256
         assert slot in range(27) if ender else slot in range(36) or slot in {100,101,102,103,150},'Nieznany slot plecaka'
-        assert slot not in seen,'Powtórzony slot plecaka';seen.add(slot)
+        if slot in seen:raise InventoryChanged('Ekwipunek zmienił się podczas odczytu')
+        seen.add(slot)
         item=entry.get('item',entry);assert isinstance(item,dict),'Błędny zapis przedmiotu'
         id=item.get('id');assert isinstance(id,str) and re.fullmatch(r'[a-z0-9_.-]+:[a-z0-9_./-]+',id),'Błędny identyfikator przedmiotu'
         count=integer(item.get('count',item.get('Count','1')));assert 1<=count<=2147483647,'Błędna liczba przedmiotów'
         components=item.get('components',{});assert isinstance(components,dict),'Błędne komponenty przedmiotu'
-        details=[]
+        details=[];enchantment_details=[]
         for component in ['minecraft:enchantments','minecraft:stored_enchantments']:
             values=components.get(component,{})
             assert isinstance(values,dict),'Błędny zapis zaklęć'
@@ -96,13 +100,19 @@ def inventory_rows(raw,ender=False):
                 level=integer(level);assert 0<=level<=255,'Błędny poziom zaklęcia'
                 key=enchant.removeprefix('minecraft:')
                 details.append(f'{enchants.get(key,clean(key)).replace("_"," ")}: {level}')
+                enchantment_details.append({'id':clean(enchant),'name':enchants.get(key,clean(key)).replace('_',' '),'level':level,'stored':component=='minecraft:stored_enchantments'})
         if ender:label=f'slot {slot+1}';order=slot
         elif slot<9:label=f'pasek {slot+1}';order=slot
         elif slot<36:label=f'plecak {slot-8}';order=slot
         else:label={100:'buty',101:'nogawice',102:'napierśnik',103:'hełm',150:'druga ręka'}[slot];order=slot
         name=names.get(id.removeprefix('minecraft:'),clean(id)) if id.startswith('minecraft:') else clean(id)
-        rows.append((order,label,name,count,', '.join(details)))
-    return [r[1:] for r in sorted(rows)]
+        if detailed:
+            damage=integer(components.get('minecraft:damage','0'));assert damage>=0,'Błędne zużycie przedmiotu'
+            explicit=components.get('minecraft:max_damage');maximum=integer(explicit) if explicit is not None else defaults.get(id.removeprefix('minecraft:')) if id.startswith('minecraft:') else None
+            assert maximum is None or 1<=maximum<=1000000,'Błędna trwałość przedmiotu'
+            rows.append((order,{'slot':slot,'label':label,'id':id,'name':name.replace('_',' '),'count':count,'details':', '.join(details),'enchantments':enchantment_details,'damage':damage,'max_damage':maximum,'remaining':max(0,maximum-damage) if maximum else None,'durability_source':'component' if explicit is not None else 'vanilla_reference_26_1' if maximum else None,'unbreakable':'minecraft:unbreakable' in components}))
+        else:rows.append((order,label,name,count,', '.join(details)))
+    return [r[1] for r in sorted(rows)] if detailed else [r[1:] for r in sorted(rows)]
 
 class NeedQuery(Exception):
     def __init__(self,path):self.path=path
@@ -120,7 +130,7 @@ def response_value(raw):
         if text.endswith('...'):raise TruncatedSnbt('Serwer skrócił odpowiedź ekwipunku') from None
         raise
 
-def inventory_plan(replies,tag):
+def inventory_plan(replies,tag,detailed=False):
     assert tag in {'Inventory','EnderItems','SelectedItem'},'Nieprawidłowy rodzaj ekwipunku'
     assert isinstance(replies,dict) and len(replies)<=2500,'Zbyt wiele odczytów ekwipunku'
     def read(path,optional=False):
@@ -138,40 +148,56 @@ def inventory_plan(replies,tag):
         components=item.get('components',{});assert isinstance(components,dict),'Błędne komponenty przedmiotu'
         damage=integer(components.get('minecraft:damage','0'));assert damage>=0,'Błędne uszkodzenie przedmiotu'
         return damage
+    def read_item(path,slot=None):
+        try:entry=read(path,True)
+        except TruncatedSnbt:
+            if slot is None:
+                slot=read(path+'.Slot',True)
+                if slot is None:slot=read(path+'.slot')
+            item_path=path;id=read(path+'.id',True)
+            if id is None:item_path=path+'.item';id=read(item_path+'.id')
+            count=read(item_path+'.count',True)
+            if count is None:count=read(item_path+'.Count',True)
+            entry={'Slot':slot,'id':id,'count':count if count is not None else '1','components':{}}
+            if detailed:
+                for component in ('minecraft:damage','minecraft:max_damage','minecraft:unbreakable'):
+                    value=read(item_path+'.components."'+component+'"',True)
+                    if value is not None:entry['components'][component]=value
+            enchant_ids=[line.split('\t')[1] for line in (ROOT/'data/enchantment-names.tsv').read_text().splitlines()]
+            for component in ('minecraft:enchantments','minecraft:stored_enchantments'):
+                component_path=item_path+'.components."'+component+'"'
+                try:values=read(component_path,True)
+                except TruncatedSnbt:
+                    level_path=component_path+'.levels'
+                    try:legacy=read(level_path,True)
+                    except TruncatedSnbt:legacy=True
+                    if legacy is None:level_path=component_path
+                    values={}
+                    for enchant in enchant_ids:
+                        level=read(level_path+'."minecraft:'+enchant+'"',True)
+                        if level is not None:values['minecraft:'+enchant]=level
+                if values is not None:entry['components'][component]=values
+        if entry is not None and slot is not None:
+            assert isinstance(entry,dict),'Błędny przedmiot wyposażenia'
+            entry={**entry,'Slot':str(slot)}
+        return entry
     try:items=read(tag)
     except TruncatedSnbt:
         items=[]
-        enchant_ids=[line.split('\t')[1] for line in (ROOT/'data/enchantment-names.tsv').read_text().splitlines()]
         for index in range(27 if tag=='EnderItems' else 41):
-            path=f'{tag}[{index}]'
-            try:entry=read(path,True)
-            except TruncatedSnbt:
-                slot=read(path+'.Slot',True)
-                if slot is None:slot=read(path+'.slot')
-                item_path=path
-                id=read(path+'.id',True)
-                if id is None:item_path=path+'.item';id=read(item_path+'.id')
-                count=read(item_path+'.count',True)
-                if count is None:count=read(item_path+'.Count',True)
-                entry={'Slot':slot,'id':id,'count':count if count is not None else '1','components':{}}
-                for component in ('minecraft:enchantments','minecraft:stored_enchantments'):
-                    component_path=item_path+'.components."'+component+'"'
-                    try:values=read(component_path,True)
-                    except TruncatedSnbt:
-                        level_path=component_path+'.levels'
-                        try:legacy=read(level_path,True)
-                        except TruncatedSnbt:legacy=True
-                        if legacy is None:level_path=component_path
-                        values={}
-                        for enchant in enchant_ids:
-                            level=read(level_path+'."minecraft:'+enchant+'"',True)
-                            if level is not None:values['minecraft:'+enchant]=level
-                    if values is not None:entry['components'][component]=values
+            entry=read_item(f'{tag}[{index}]')
             if entry is None:break
             items.append(entry)
+    if detailed and tag=='Inventory':
+        assert isinstance(items,list),'Błędna lista przedmiotów'
+        present={integer(e.get('Slot',e.get('slot','-1')))%256 for e in items if isinstance(e,dict)}
+        for part,slot in [('feet',100),('legs',101),('chest',102),('head',103),('offhand',150)]:
+            if slot in present:continue
+            entry=read_item('equipment.'+part,slot)
+            if entry is not None:items.append(entry)
     # JSON is a strict subset of the SNBT accepted here. Reuse all existing slot,
     # ID, quantity and enchantment validation before presenting any rows.
-    return inventory_rows('Player has the following entity data: '+json.dumps(items),tag=='EnderItems')
+    return inventory_rows('Player has the following entity data: '+json.dumps(items),tag=='EnderItems',detailed=detailed)
 
 def planner_main(args):
     if args[0]=='--update':
@@ -180,8 +206,14 @@ def planner_main(args):
         replies[args[1]]=response;print(json.dumps(replies));return
     if args[0]=='--plan':
         replies=json.load(sys.stdin)
-        try:rows=inventory_plan(replies,args[1])
+        detailed=bool(os.environ.get('NIK_RESULT_PATH')) and args[1]!='SelectedItem'
+        try:rows=inventory_plan(replies,args[1],detailed=detailed)
         except NeedQuery as query:print('QUERY\t'+query.path);return
+        except InventoryChanged:print('RETRY');return
+        if detailed:
+            from result_data import write_result
+            write_result({'type':'inventory','kind':'ender' if args[1]=='EnderItems' else 'inventory','capacity':27 if args[1]=='EnderItems' else 36,'slots':rows})
+            rows=[(r['label'],r['name'].replace(' ','_'),r['count'],r['details']) for r in rows]
         print('DONE')
         if isinstance(rows,int):print(rows);return
         for label,name,count,detail in rows:print(f'{label}\t{name}\t{count}\t{detail}')
@@ -201,5 +233,5 @@ def main():
     for label,name,count,detail in rows:print(f'{label}\t{name}\t{count}\t{detail}')
 if __name__=='__main__':
     try:main()
-    except (AssertionError,ValueError,KeyError,TypeError,IndexError) as error:
+    except (AssertionError,ValueError,KeyError,TypeError,IndexError,OSError) as error:
         print('NIK: '+str(error),file=sys.stderr);sys.exit(2)

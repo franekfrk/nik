@@ -73,3 +73,14 @@ zmiany gry i tworzenie kopii również wywołują oryginalny `nik.sh`. Logika od
 stanu gracza jest w `lib/players.sh` i `tools/player-status.py`, a archiwizacja
 pozostaje w istniejącym `tools/world-backup.py`. Panel nie ma własnego transportu
 Docker/RCON ani parsera plików świata.
+
+## Wydanie 2.8
+
+`tools/json-cli.py` opakowuje oryginalny dyspozytor Bash w wersjonowany JSON/JSONL.
+`tools/result_data.py` jest prywatnym kanałem typowanych wyników helpersów NIK.
+`tools/inventory.py` waliduje i składa SNBT do typowanych slotów, a
+`lib/scenarios.sh` i `tools/scenarios.py` odpowiadają za plany oraz preflight
+wszystkich kroków. Panel interpretuje wyłącznie zdarzenia protokołu; logika gry
+pozostaje w NIK. `panel/static/enhancements.js` zawiera prezentację slotów,
+postępu i formularzy. Migracja SQLite dodaje kolejność ulubionych i preferencje
+katalogu, zachowując dotychczasową historię i identyfikatory skrótów.

@@ -2,7 +2,7 @@
 nik_help() {
     local name=${1:-} cmd group
     local -a groups=('PRZEDMIOTY I EKWIPUNEK' 'PODRÓŻE I RATUNEK' 'GRACZE I EFEKTY' 'OD TATY DLA FRANKA' 'ŚWIAT I STWORZENIA' 'SŁOWNIKI I WYSZUKIWANIE' 'SERWER I POZOSTAŁE')
-    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.7'
+    nik_panel 'NIK v2 — polskie komendy Minecraft' 'TWÓJ ŚWIAT • TWOJE PRZYGODY • WERSJA 2.8'
     if [[ -n $name ]]; then
         [[ -v NIK_USAGE[$name] ]] || nik_die "Nieznana komenda: $name"
         nik_section 'JAK UŻYWAĆ'
@@ -19,6 +19,8 @@ nik_help() {
         done
     fi
     nik_section 'OPCJE'
+    nik_help_row --json 'Wynik polecenia w jednolitym formacie JSON.'
+    nik_help_row --jsonl 'Postęp i wynik jako strumień zdarzeń JSON.'
     nik_help_row --podglad 'Pokaż plan bez wykonywania zmian.'
     nik_help_row --potwierdz 'Potwierdź operację wymagającą zgody.'
     nik_help_row --konfiguracja 'KATALOG — wybierz własną konfigurację.'

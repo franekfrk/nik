@@ -8,6 +8,17 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.8.0 — wygodniejszy terminal i panel
+
+- Graficzny plecak i skrzynia Endera: sloty, prawdziwe ikonki, ilości, wyposażenie,
+  zaklęcia i trwałość. Kliknięcie przedmiotu pokazuje jego szczegóły.
+- Rzeczywisty postęp oraz tekst wyniku w trakcie pracy, wysyłane przez NIK.
+- Edycja nazwy, gracza i parametrów ulubionej akcji oraz zmiana jej kolejności.
+- Własne scenariusze złożone z 1–12 komend, dostępne w terminalu i panelu.
+- Gwiazdki przy przedmiotach i stworzeniach oraz ostatnie wybory, zapisane prywatnie
+  i dostępne również po odświeżeniu oraz na innych urządzeniach.
+- Jednolity, wersjonowany wynik `--json` oraz strumień `--jsonl` dla komend NIK.
+
 ## Terminal albo panel WWW
 
 W terminalu po wczytaniu skryptu możesz wpisać:
@@ -687,3 +698,50 @@ ekwipunki, zadania i punkty mają wspólne nagłówki oraz kolory. Tęczowy podp
 **Dla Franka ♥ Tata** pozostaje. Układ pomocy i statusu dopasowuje się do
 szerokości 40–110 znaków (`NIK_WIDTH`); długie opisy zawijają się w swojej kolumnie.
 `NO_COLOR` i `NIK_COLOR=never` wyłączają kolory, a podpowiedzi Tab pozostają czyste.
+
+
+## Własne scenariusze
+
+```bash
+nik scenariusz zapisz wyprawa "dzien" "zdrowie {gracz}" "daj {gracz} pochodnia 64"
+nik scenariusz lista
+nik scenariusz pokaz wyprawa
+nik --podglad scenariusz g1 wyprawa
+nik scenariusz g1 wyprawa
+nik scenariusz usun wyprawa --potwierdz
+```
+
+`{gracz}` jest zastępowany wybranym graczem. W panelu użyj „Nowy plan” na pulpicie;
+każdy wiersz edytora jest jedną komendą. Zapis istniejącej nazwy aktualizuje plan.
+NIK sprawdza wszystkie kroki w podglądzie przed pierwszą zmianą w grze.
+Wykonuje je po kolei i zatrzymuje się po błędzie; wcześniejsze zmiany pozostają.
+Scenariusze nie są transakcją i nie cofają automatycznie wykonanych poleceń.
+
+Definicje są prywatne w `config/scenarios/*.json` (600, katalog 700).
+Dozwolona jest lista komend NIK, m.in. dawanie przedmiotów, leczenie, efekty,
+teleporty, pogoda, napisy, wiadomości i własne zestawy. NIK parsuje kroki do tablic
+argumentów; nie uruchamia kodu powłoki, `eval`, zagnieżdżonych planów ani poleceń
+administracyjnych takich jak restart i przywracanie świata. Ostateczną walidację
+każdego kroku nadal wykonuje oryginalna komenda NIK.
+
+## JSON i postęp
+
+```bash
+nik --json --podglad daj g1 diament 2
+nik --json plecak g1
+nik --jsonl scenariusz g1 wyprawa
+```
+
+Zwykły terminal zachowuje kolorowe komunikaty i obecne skróty. `--json` zwraca
+jeden obiekt: `schema: 1`, `ok`, `code`, `output`, `result`. Kod procesu pozostaje
+zgodny z wynikiem komendy. `result` zawiera typowane dane dla plecaka, Endera,
+scenariuszy oraz istniejących odczytów JSON; dla pozostałych komend może być null.
+`output` pozostaje tekstem dla człowieka. `--jsonl` wysyła kolejne rekordy
+`progress`, `output` i końcowy `result` z tym samym obiektem wyniku.
+
+Typowane dane ekwipunku obejmują numery slotów, ID, polskie nazwy, ilości,
+zaklęcia, zużycie oraz maksymalną trwałość. Komponenty odczytane z Minecrafta
+mają pierwszeństwo. Gdy brak własnego maksimum, NIK może użyć danych referencyjnych
+vanilla 26.1 dla znanych przedmiotów — panel oznacza je jako trwałość domyślną.
+Nie zgaduje maksimum nieznanych przedmiotów. Źródło i licencja danych znajdują się
+w `data/durability-source.txt` i `data/durability-LICENSE.txt`.

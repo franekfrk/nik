@@ -1,0 +1,6 @@
+Vanilla reference durability values. Components read from Minecraft override these defaults.
+Source: https://raw.githubusercontent.com/PrismarineJS/minecraft-data/master/data/pc/26.1/items.json
+SHA256: 0d085dbf8a6fa129b94f696b77286d65ce7b04476eab398492558ab03cc1c45e
+Source package: minecraft-data 3.117.0 (npm declares MIT).
+Package metadata: https://registry.npmjs.org/minecraft-data/3.117.0
+Numeric facts and identifiers only; no source code copied. Unknown items have no guessed maximum.

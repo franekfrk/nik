@@ -57,15 +57,25 @@ nik_cmd_inventory() {
 # The server may truncate translated NBT components. Request only the missing
 # fields when that happens; every RCON read keeps the usual timeout and audit.
 nik_inventory_read() {
-    local player=$1 tag=$2 state='{}' plan path
+    local player=$1 tag=$2 state='{}' plan path NIK_PROGRESS_GENERIC=0 read_number=0 retries=0
     while :; do
         plan=$(printf '%s' "$state" | python3 "$NIK_ROOT/tools/inventory.py" --plan "$tag") || return "$?"
         if [[ $plan == DONE || $plan == DONE$'\n'* ]]; then
             [[ $plan != DONE ]] || return 0
             printf '%s\n' "${plan#*$'\n'}"; return 0
         fi
+        if [[ $plan == RETRY ]]; then
+            ((retries < 1)) || nik_die 'Ekwipunek zmieniał się podczas odczytu. Spróbuj ponownie bez przekładania przedmiotów.'
+            retries=$((retries+1)); state='{}'
+            nik_progress 'Ekwipunek zmienił się podczas odczytu. Odczytuję ponownie.'
+            continue
+        fi
         [[ $plan == QUERY$'\t'* ]] || nik_die 'Nieprawidłowy plan odczytu plecaka.'
         path=${plan#*$'\t'}
+        read_number=$((read_number+1))
+        if [[ $path == equipment.* ]]; then nik_progress "Sprawdzam wyposażenie gracza (odczyt $read_number)."
+        elif [[ $path =~ \[([0-9]+)\] ]]; then nik_progress "Odczytuję przedmiot $((BASH_REMATCH[1]+1)) i zaklęcia (odczyt $read_number)."
+        else nik_progress 'Odczytuję listę przedmiotów gracza.'; fi
         nik_rcon "data get entity $player $path" 1 >/dev/null || return "$?"
         state=$(printf '%s\0%s' "$state" "$NIK_RCON_RESPONSE" | python3 "$NIK_ROOT/tools/inventory.py" --update "$path") || return "$?"
     done

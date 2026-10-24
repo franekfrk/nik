@@ -21,11 +21,12 @@ ACTIONS = {
  'reward':('Nagroda od Taty','nagroda'), 'weather':('Zmień pogodę','pogoda'),
  'day':('Ustaw dzień','dzien'), 'night':('Ustaw noc','noc'),
  'save':('Zapisz świat','zapisz'), 'status':('Sprawdź serwer','status'),
+ 'scenario':('Wykonaj scenariusz','scenariusz'), 'scenario_save':('Zapisz scenariusz','scenariusz'),
  'players':('Stan graczy','stan'), 'backup':('Kopia świata','kopia'), 'backups':('Lista kopii świata','kopia'),
  'kit':('Daj ulubiony zestaw','zestaw'), 'equip':('Gotowe wyposażenie','wyposaz'),
  'recipe':('Przepis wytwarzania','przepis'), 'mode':('Tryb gry',''),
 }
-GLOBAL={'players','backup','backups','weather','day','night','save','status','recipe'}
+GLOBAL={'scenario_save','players','backup','backups','weather','day','night','save','status','recipe'}
 CONFIRM={'clear_effects','equip','backup'}
 ANSI=re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
@@ -50,7 +51,12 @@ def build(data):
  if action in CONFIRM and not (preview or confirmed):raise InputError('Ta czynność wymaga potwierdzenia.')
  args=[ACTIONS[action][1]]
  if action not in GLOBAL:args.append(text(data,'player'))
- if action=='players':args.extend(['lista','json'])
+ if action=='scenario':args.append(text(data,'scenario',limit=40))
+ elif action=='scenario_save':
+  args.extend(['zapisz',text(data,'name',limit=40)]);lines=data.get('steps')
+  if not isinstance(lines,list) or not 1<=len(lines)<=12 or any(not isinstance(line,str) or not 1<=len(line)<=2048 or any(unicodedata.category(c) in {'Cc','Cs'} for c in line) for line in lines):raise InputError('Podaj 1–12 poprawnych kroków scenariusza.')
+  args.extend(lines)
+ elif action=='players':args.extend(['lista','json'])
  elif action=='backup':args.append('utworz')
  elif action=='backups':args.append('dane')
  elif action in {'kit','equip'}:args.append(text(data,'kit'))
@@ -82,9 +88,9 @@ def build(data):
   args[0]=mode
  return args,preview,confirmed
 
-def argv(root,config,data):
+def argv(root,config,data,structured=True):
  args,preview,confirmed=build(data)
- return ['bash',str(root/'nik.sh'),'--konfiguracja',str(config),*(['--podglad'] if preview else []),*(['--potwierdz'] if confirmed else []),'--',*args]
+ return ['bash',str(root/'nik.sh'),*(['--jsonl'] if structured and data['action'] not in {'backup','backups'} else []),'--konfiguracja',str(config),*(['--podglad'] if preview else []),*(['--potwierdz'] if confirmed else []),'--',*args]
 
 def environment(root):
  # Do not import a remote request, extension path or shell program from the client.
@@ -112,4 +118,8 @@ def metadata(root,config):
  rewards=sorted({p.stem for directory in [root/'data/rewards',config/'rewards'] for p in directory.glob('*.tsv') if p.is_file() and not p.is_symlink()})
  kits=sorted(p.stem for p in (config/'favorites').glob('*.tsv') if p.is_file() and not p.is_symlink())
  equipment=sorted(p.stem for p in (config/'sets').glob('*.tsv') if p.is_file() and not p.is_symlink())
- return {'kits':kits,'equipment':equipment,'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.3','actions':list(ACTIONS)}
+ plans=subprocess.run(['bash',str(root/'nik.sh'),'--konfiguracja',str(config),'scenariusz','dane'],env=environment(root),capture_output=True,text=True,timeout=20)
+ if plans.returncode:raise InputError('NIK nie mógł odczytać scenariuszy.')
+ import json
+ scenarios=json.loads(plans.stdout)['scenarios']
+ return {'scenarios':scenarios,'kits':kits,'equipment':equipment,'players':players,'items':items,'creatures':creatures,'enchantments':enchantments,'effects':effects,'places':[r[0] for r in rows(config/'places.tsv')],'rewards':rewards,'version':'NIK Mobile 1.4','actions':list(ACTIONS)}

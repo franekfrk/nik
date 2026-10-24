@@ -4,7 +4,7 @@ _nik_v2_complete() {
     local -a options=()
     COMPREPLY=()
     if [[ $current == --* ]]; then
-        for word in --konfiguracja --podglad --potwierdz --pomoc --wersja --rozszerzenia; do
+        for word in --konfiguracja --podglad --potwierdz --pomoc --wersja --rozszerzenia --json --jsonl; do
             [[ $word != "$current"* ]] || COMPREPLY+=("$word")
         done
         return 0
@@ -21,7 +21,7 @@ _nik_v2_complete() {
                     next=$((i+1))
                     if ((next < COMP_CWORD)); then options+=("$word" "${COMP_WORDS[next]}"); i=$next; continue; fi
                     return 0 ;;
-                --podglad|--dry-run|--potwierdz|--confirm|--pomoc|--help|-h) continue ;;
+                --podglad|--dry-run|--potwierdz|--confirm|--pomoc|--help|-h|--json|--jsonl) continue ;;
                 --) end_options=1; continue ;;
             esac
         fi
@@ -37,7 +37,7 @@ _nik_v2_complete() {
 nik_skroty() {
     local command
     for command in daj encik dom zamek tp dolacz efekt usun zdrowie wyposaz zapisz \
-        szukaj przedmioty online stan gracz_lista dzien noc burza pogoda zamroz odmroz \
+        szukaj przedmioty online scenariusz stan gracz_lista dzien noc burza pogoda zamroz odmroz \
         kick grzmot wybuch restartmc wyczysc zaklnij kreatywny przetrwanie obserwator przygodowy zestaw kopia przywroc gdzie powrot tata wiadomosc punkt plecak napis przywolaj ratunek napraw ender fajerwerki zadanie ochrona prowadz odliczanie losuj nagroda przepis; do
         # Expansion at definition time is intentional for this fixed command list.
         # shellcheck disable=SC2139

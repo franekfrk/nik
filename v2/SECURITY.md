@@ -53,3 +53,12 @@ panelu. Dostęp wymaga sesji; modyfikacje ulubionych także CSRF. Plik SQLite ma
 uprawnienia 600, katalog 700; `state` jest wyłączony z Gita i publicznych paczek.
 Historia może zawierać pozycje i ekwipunek graczy. Sesje pozostają w pamięci, więc
 restart wymaga logowania. Przerwane operacje nie są odtwarzane automatycznie.
+
+## Dane Mobile 1.4 i scenariusze
+
+Wyniki JSON/JSONL tworzy NIK. Kanał wyniku używa prywatnego pliku tymczasowego,
+odrzuca dowiązania i pliki inne niż zwykłe. Panel zachowuje wyniki i preferencje
+w prywatnym SQLite; te pliki nie należą do publicznej paczki.
+Scenariusze są danymi konfiguracji: argumenty przechodzą przez parser bez powłoki,
+listę dozwolonych komend i podgląd NIK wszystkich kroków przed wykonaniem.
+Błąd zatrzymuje kolejne kroki; już wykonane zmiany pozostają w grze.

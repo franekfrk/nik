@@ -293,3 +293,16 @@ SQLite integrity_check i uprawnienia 600/700 przeszły kontrolę. W przeglądarc
 sprawdzono odtworzenie parametrów ulubionej akcji, filtrowanie po komendzie,
 odświeżenie historii i potwierdzenie kopii świata. Test archiwizacji używa
 izolowanego świata, bez zatrzymywania produkcyjnego Minecrafta.
+
+## Wydanie 2.8.0 / Mobile 1.4
+
+W lokalnym pełnym przebiegu: 149 testów Python, 231 testów Bats, bash -n,
+ShellCheck oraz audyt 125 publicznych plików. Nowe testy obejmują JSON/JSONL,
+pełny i skrócony SNBT, wyposażenie, trwałość komponentu, pusty plecak i Ender,
+błędy RCON, scenariusze i zatrzymanie po błędzie, migrację starego SQLite,
+edycję i kolejność skrótów oraz trwałość preferencji katalogu.
+Interfejs sprawdzono także w przeglądarce z atrapą Docker/RCON.
+
+Odczyt rzeczywistego serwera potwierdził 38 zajętych slotów. Wykryto też zmianę
+slotów podczas sekwencyjnego odczytu; NIK ponawia taki odczyt raz i przy dalszej
+niespójności zwraca jasny błąd bez częściowego wyniku graficznego.

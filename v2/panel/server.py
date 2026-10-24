@@ -64,7 +64,7 @@ class App:
     return existing
    if len(self.jobs)>=200 or not self.slots.acquire(blocking=False):raise HTTPError(429,'Kolejka jest pełna. Poczekaj na zakończenie czynności.')
    id=secrets.token_urlsafe(18)
-   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False),'action':data['action'],'player':data.get('player','') if data['action'] not in bridge.GLOBAL else '', 'timestamp':time.time(),'command':args[0]}
+   self.jobs[id]={'id':id,'owner':owner,'key':key,'digest':digest,'created':time.monotonic(),'state':'queued','output':'','code':None,'label':bridge.ACTIONS[data['action']][0],'preview':data.get('preview',False),'action':data['action'],'player':data.get('player','') if data['action'] not in bridge.GLOBAL else '', 'timestamp':time.time(),'command':args[0],'result':None,'progress':[]}
    try:
     self.history.put(self.jobs[id])
     self.keys[owner,key]=id
@@ -78,7 +78,7 @@ class App:
     raise HTTPError(503,'Nie udało się zapisać operacji. Komenda nie została uruchomiona.')
    return id
  def run_job(self,id,data):
-  job=self.jobs[id]
+  job=self.jobs[id];process=None
   try:
    with self.lock:
     if job['state']=='cancelled':return
@@ -89,17 +89,31 @@ class App:
     with self.lock:
      job['process']=process
      if job['state']=='cancelled':os.killpg(process.pid,signal.SIGTERM)
-    try:code=process.wait(timeout=2100 if data['action']=='backup' else 180)
-    except subprocess.TimeoutExpired:
-     self.stop(process,180 if data['action']=='backup' else 2);code=124
-    out.seek(0);output=bridge.clean(out.read(131072).decode(errors='replace'))
+    decoder=JobEvents(job,self.lock);offset=0;timed_out=False;deadline=time.monotonic()+(2100 if data['action']=='backup' else 180)
+    while True:
+     try:code=process.wait(timeout=2100 if data['action']=='backup' else min(.3,max(.01,deadline-time.monotonic())))
+     except subprocess.TimeoutExpired:code=None
+     chunk=os.pread(out.fileno(),1048576,offset)
+     if chunk:offset+=len(chunk);decoder.feed(chunk)
+     if code is not None:break
+     if time.monotonic()>=deadline:
+      self.stop(process,180 if data['action']=='backup' else 2);code=124;timed_out=True;break
+    while True:
+     chunk=os.pread(out.fileno(),1048576,offset)
+     if not chunk:break
+     offset+=len(chunk);decoder.feed(chunk)
+    output,result=decoder.finish()
+    if result is not None:
+     if type(result.get('code')) is not int or type(result.get('ok')) is not bool or result['ok']!=(code==0) or result['code']!=code:raise ValueError('Niespójny wynik NIK.')
+     job['result']=result.get('result')
     with self.lock:
      job.pop('process',None);job['code']=code
      if job['state']!='cancelled':job['output']=output
      if job['state']!='cancelled':job['state']='success' if code==0 else 'error'
-     if code==124:job['output']+='\nPrzekroczono czas panelu. Część operacji mogła zostać wykonana; nie ponawiaj automatycznie.'
+     if timed_out:job['output']+='\nPrzekroczono czas panelu. Część operacji mogła zostać wykonana; nie ponawiaj automatycznie.'
      self.history.put(job)
   except Exception as error:
+   if process is not None:self.stop(process)
    with self.lock:job.update(state='error',code=1,output=job['output']+'\nPanel napotkał błąd obsługi operacji. Sprawdź wynik i stan gry przed ponowieniem; wcześniejsze kroki mogły zostać wykonane.');job.pop('process',None)
    print('Błąd uruchomienia zadania: '+type(error).__name__,flush=True)
   finally:
@@ -122,16 +136,16 @@ class App:
   with self.lock:
    j=self.jobs.get(id)
    if not j or j['owner']!=owner:raise HTTPError(404,'Nie znaleziono operacji w tej sesji.')
-   return {k:j[k] for k in ('id','state','output','code','label','preview','action','player','timestamp')}
+   return {k:j.get(k,[] if k=='progress' else None) for k in FIELDS}
  def history_view(self,id):
   with self.lock:
-   if id in self.jobs:return {key:self.jobs[id][key] for key in FIELDS}
+   if id in self.jobs:return {key:self.jobs[id].get(key,[] if key=='progress' else None) for key in FIELDS}
   return self.history.get(id)
  def history_list(self):
   records=self.history.list()
   with self.lock:
    for record in records:
-    if record['id'] in self.jobs:record.update({key:self.jobs[record['id']][key] for key in FIELDS if key!='output'})
+    if record['id'] in self.jobs:record.update({key:self.jobs[record['id']].get(key,[] if key=='progress' else None) for key in FIELDS if key not in {'output','result'}})
   return records
  def cancel(self,id,owner):
   self.view(id,owner)
@@ -142,6 +156,35 @@ class App:
    j['state']='cancelled';j['output']='Zatrzymano oczekiwanie i proces NIK. Wcześniejsze kroki mogły zostać wykonane.';p=j.get('process')
    self.history.put(j)
   if p:self.stop(p)
+
+
+class JobEvents:
+ def __init__(self,job,lock):self.job=job;self.lock=lock;self.pending=b'';self.plain=[];self.result=None;self.size=0;self.live=''
+ def feed(self,chunk):
+  self.size+=len(chunk)
+  if self.size>8388608:raise ValueError('Zbyt duży strumień NIK.')
+  self.pending+=chunk
+  while b'\n' in self.pending:
+   line,self.pending=self.pending.split(b'\n',1);self.line(line)
+ def line(self,raw):
+  text=raw.decode(errors='replace')
+  try:event=json.loads(text)
+  except ValueError:event=None
+  if isinstance(event,dict) and event.get('type')=='progress' and isinstance(event.get('message'),str):
+   with self.lock:self.job['progress']=(self.job.get('progress',[])+[{'message':bridge.clean(event['message'])[:500],'at':time.time()}])[-40:]
+  elif isinstance(event,dict) and event.get('type')=='output' and isinstance(event.get('text'),str):
+   self.live=(self.live+bridge.clean(event['text']))[:131072]
+   with self.lock:
+    if self.job['state']!='cancelled':self.job['output']=self.live
+  elif isinstance(event,dict) and event.get('type')=='result' and isinstance(event.get('data'),dict) and event['data'].get('schema')==1:
+   if self.result is not None:raise ValueError('Powtórzony wynik NIK.')
+   self.result=event['data']
+  else:self.plain.append(text+'\n')
+ def finish(self):
+  if self.pending:self.line(self.pending);self.pending=b''
+  output=self.result.get('output','') if self.result is not None else ''.join(self.plain) or self.live
+  if not isinstance(output,str):raise ValueError('Nieprawidłowy tekst wyniku.')
+  return bridge.clean(output)[:131072],self.result
 
 class Server(ThreadingHTTPServer):
  daemon_threads=True;allow_reuse_address=True
@@ -204,14 +247,31 @@ class Handler(BaseHTTPRequestHandler):
    if path=='/api/favorites':
     name=bridge.text(data,'name',limit=40);request=data.get('request')
     if not isinstance(request,dict):raise bridge.InputError('Brak ustawień ulubionej akcji.')
-    allowed={'action','player','item','creature','count','enchantments','effect','duration','level','place','name','text','seconds','reward','weather','mode','kit'}
+    allowed={'action','player','item','creature','count','enchantments','effect','duration','level','place','name','text','seconds','reward','weather','mode','kit','scenario'}
     request={k:v for k,v in request.items() if k in allowed};bridge.build({**request,'preview':True})
-    check=subprocess.run(bridge.argv(app.root,app.nik_config,{**request,'preview':True}),env=bridge.environment(app.root),capture_output=True,text=True,timeout=20)
+    check=subprocess.run(bridge.argv(app.root,app.nik_config,{**request,'preview':True},structured=False),env=bridge.environment(app.root),capture_output=True,text=True,timeout=20)
     if check.returncode:raise bridge.InputError('NIK nie zaakceptował skrótu: '+bridge.clean(check.stdout+check.stderr)[-2000:])
-    id=secrets.token_urlsafe(18)
-    try:app.history.save_favorite(id,name,request)
+    id=data.get('id') or secrets.token_urlsafe(18)
+    if not isinstance(id,str):raise bridge.InputError('Nieprawidłowy identyfikator skrótu.')
+    try:
+     if data.get('id'):app.history.edit_favorite(id,name,request)
+     else:app.history.save_favorite(id,name,request)
     except ValueError as error:raise bridge.InputError(str(error))
     self.response(201,{'id':id});return
+   if path=='/api/favorites/order':
+    try:app.history.reorder_favorites(data.get('ids'))
+    except ValueError as error:raise bridge.InputError(str(error))
+    self.response(200,{'ok':True});return
+   if path in {'/api/catalog/pin','/api/catalog/recent'}:
+    kind=data.get('kind');id=data.get('id')
+    if not isinstance(kind,str) or kind not in {'items','creatures'} or not isinstance(id,str) or id not in {r[1] for r in bridge.rows(app.root/'data'/('items.tsv' if kind=='items' else 'creatures.tsv'))}:raise bridge.InputError('Nieznany wpis katalogu NIK.')
+    try:
+     if path.endswith('/pin'):
+      if type(data.get('enabled')) is not bool:raise bridge.InputError('Nieprawidłowa opcja ulubionego przedmiotu.')
+      app.history.catalog_pin(kind,id,data['enabled'],time.time())
+     else:app.history.catalog_remember(kind,id,time.time())
+    except ValueError as error:raise bridge.InputError(str(error))
+    self.response(200,{'ok':True});return
    if re.fullmatch('/api/favorites/[A-Za-z0-9_-]+/delete',path):
     app.history.delete_favorite(path.split('/')[3]);self.response(200,{'ok':True});return
    if path=='/api/jobs':
@@ -222,6 +282,8 @@ class Handler(BaseHTTPRequestHandler):
    _,s=self.authenticated();self.response(200,{'csrf':s['csrf']});return
   if path=='/api/metadata':
    self.authenticated();self.response(200,bridge.metadata(app.root,app.nik_config));return
+  if path=='/api/catalog':
+   self.authenticated();self.response(200,app.history.catalog());return
   if path=='/api/favorites':
    self.authenticated();self.response(200,{'entries':app.history.favorites()});return
   if path=='/api/history':
@@ -237,7 +299,7 @@ class Handler(BaseHTTPRequestHandler):
    self.response(200,app.view(id,owner));return
   if re.fullmatch('/api/jobs/[A-Za-z0-9_-]+',path):
    owner,_=self.authenticated();self.response(200,app.view(path.rsplit('/',1)[-1],owner));return
-  files={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/sw.js':'sw.js','/manifest.webmanifest':'manifest.webmanifest','/terrain.svg':'terrain.svg','/icon.svg':'icon.svg','/icons.css':'icons.css','/icons.json':'icons.json','/icons-items.png':'icons-items.png','/icons-creatures.png':'icons-creatures.png','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png','/apple-touch-icon.png':'apple-touch-icon.png'}
+  files={'/':'index.html','/index.html':'index.html','/app.css':'app.css','/app.js':'app.js','/enhancements.js':'enhancements.js','/enhancements.css':'enhancements.css','/sw.js':'sw.js','/manifest.webmanifest':'manifest.webmanifest','/terrain.svg':'terrain.svg','/icon.svg':'icon.svg','/icons.css':'icons.css','/icons.json':'icons.json','/icons-items.png':'icons-items.png','/icons-creatures.png':'icons-creatures.png','/icon-192.png':'icon-192.png','/icon-512.png':'icon-512.png','/apple-touch-icon.png':'apple-touch-icon.png'}
   if path not in files:raise HTTPError(404,'Nie znaleziono strony.')
   file=STATIC/files[path]
   kinds={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png','.json':'application/json; charset=utf-8'}

@@ -58,7 +58,7 @@ class AdapterTests(unittest.TestCase):
   for data in [{'action':'mode','player':'g1','mode':'op'},{'action':'enchant_hand','player':'g1','enchantments':[]}]:
    with self.assertRaises(bridge.InputError):bridge.build(data)
  def test_all_exposed_actions_have_build_paths(self):
-  fields={'player':'g1','item':'diamond_sword','creature':'krowa','place':'dom','name':'baza','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','confirm':True}
+  fields={'player':'g1','item':'diamond_sword','creature':'krowa','place':'dom','name':'baza','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','scenario':'wyprawa','steps':['zdrowie {gracz}'],'confirm':True}
   for action in bridge.ACTIONS:
    with self.subTest(action=action):self.assertTrue(bridge.build({'action':action,**fields})[0][0])
  def test_pwa_manifest_and_network_only_api(self):
@@ -83,6 +83,7 @@ class HTTPTests(unittest.TestCase):
 printf '%s\\n' "$@"
 if [[ ${*: -1} == FAIL ]]; then exit 7; fi
 ''')
+  (cls.root/'data').symlink_to(ROOT/'data',target_is_directory=True)
   cls.app=server.App({'nik_root':str(cls.root),'origins':['https://nik.example.test:6767'],'password':server.password_record('test-password')})
   cls.http=server.Server(('127.0.0.1',0),cls.app);cls.port=cls.http.server_address[1]
   cls.thread=threading.Thread(target=cls.http.serve_forever,daemon=True);cls.thread.start()
@@ -175,6 +176,28 @@ if [[ ${*: -1} == FAIL ]]; then exit 7; fi
    args=bridge.argv(ROOT,ROOT/'config.example',{**data,'confirm':True});self.assertEqual(args[:2],['bash',str(ROOT/'nik.sh')]);self.assertIn(command,args);self.assertIn('--potwierdz',args)
   self.assertEqual(bridge.build({'action':'players'})[0],['stan','lista','json'])
   self.assertEqual(bridge.build({'action':'backups'})[0],['kopia','dane'])
+ def test_edit_and_reorder_favorites_keep_ids_and_survive_relogin(self):
+  cookie,csrf=self.login();ids=[]
+  for name in ['Pierwszy','Drugi']:
+   status,_,data=self.request('/api/favorites',{'name':name,'request':{'action':'heal','player':'g1'}},cookie,csrf);self.assertEqual(status,201);ids.append(data['id'])
+  before=self.request('/api/favorites',cookie=cookie)[2]['entries'];order=[e['id'] for e in before][::-1]
+  self.assertEqual(self.request('/api/favorites',{'id':ids[0],'name':'Zmieniony','request':{'action':'give','player':'g2','item':'diament','count':16}},cookie,csrf)[0],201)
+  self.assertEqual(self.request('/api/favorites/order',{'ids':order},cookie,csrf)[0],200)
+  self.assertEqual(self.request('/api/favorites/order',{'ids':order+order},cookie,csrf)[0],400)
+  other,_=self.login();saved=self.request('/api/favorites',cookie=other)[2]['entries'];self.assertEqual([e['id'] for e in saved],order);item=next(e for e in saved if e['id']==ids[0]);self.assertEqual(item['name'],'Zmieniony');self.assertEqual(item['request']['count'],16);self.assertEqual(item['request']['player'],'g2')
+  for id in ids:self.request('/api/favorites/'+id+'/delete',{},cookie,csrf)
+ def test_catalog_preferences_require_auth_csrf_and_real_nik_ids(self):
+  self.assertEqual(self.request('/api/catalog')[0],401);cookie,csrf=self.login()
+  good={'kind':'items','id':'diamond','enabled':True}
+  self.assertEqual(self.request('/api/catalog/pin',good,cookie,'wrong')[0],403)
+  self.assertEqual(self.request('/api/catalog/pin',good,cookie,csrf)[0],200)
+  for data in [{'kind':[],'id':'diamond','enabled':True},{'kind':'items','id':'missing','enabled':True},{'kind':'items','id':'diamond','enabled':'true'}]:self.assertEqual(self.request('/api/catalog/pin',data,cookie,csrf)[0],400)
+  self.assertEqual(self.request('/api/catalog/recent',{'kind':'items','id':'diamond'},cookie,csrf)[0],200)
+  other,_=self.login();status,headers,data=self.request('/api/catalog',cookie=other);self.assertEqual(status,200);self.assertEqual(headers['Cache-Control'],'no-store');self.assertIn({'kind':'items','id':'diamond'},data['pins']);self.assertIn({'kind':'items','id':'diamond'},data['recent'])
+  self.request('/api/catalog/pin',{**good,'enabled':False},cookie,csrf)
+ def test_new_ui_assets_are_local_and_public_but_preferences_are_private(self):
+  for path in ['/enhancements.js','/enhancements.css']:self.assertEqual(self.request(path)[0],200)
+  self.assertEqual(self.request('/state/panel/history.sqlite3')[0],404)
  def test_logout_revokes_session(self):
   cookie,csrf=self.login();self.assertEqual(self.request('/api/logout',{},cookie,csrf)[0],200);self.assertEqual(self.request('/api/session',cookie=cookie)[0],401)
  def test_static_csp_and_no_file_traversal(self):
@@ -193,8 +216,9 @@ class RealNIKPreviewTests(unittest.TestCase):
    bin=base/'bin';bin.mkdir();docker=bin/'docker';docker.write_text('#!/usr/bin/env bash\ntouch "'+str(base/'DOCKER_WAS_CALLED')+'"\nexit 99\n');docker.chmod(0o700)
    quests=cfg/'quests';quests.mkdir()
    state=base/'state';(state/'returns').mkdir(parents=True);(state/'returns/PlayerOne.json').write_text(json.dumps({'schema':1,'player':'PlayerOne','container':'minecraft','position':['1','64','2'],'rotation':['0','0'],'dimension':'minecraft:overworld'}))
+   (cfg/'scenarios').mkdir();(cfg/'scenarios/wyprawa.json').write_text(json.dumps({'schema':1,'name':'wyprawa','steps':['zdrowie {gracz}']}))
    (cfg/'favorites').mkdir();(cfg/'favorites/budowniczy.tsv').write_text('torch\t64\n')
-   fields={'player':'g1','item':'diamentowy_miecz','creature':'krowa','place':'baza','name':'port','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','confirm':True,'preview':True}
+   fields={'player':'g1','item':'diamentowy_miecz','creature':'krowa','place':'baza','name':'port','text':'Brawo ♥','reward':'budowniczy','weather':'slonce','mode':'przetrwanie','effect':'sila','enchantments':['naprawa'],'kit':'budowniczy','scenario':'wyprawa','steps':['zdrowie {gracz}'],'confirm':True,'preview':True}
    for action in bridge.ACTIONS:
     with self.subTest(action=action):
      record=quests/'PlayerOne.json'

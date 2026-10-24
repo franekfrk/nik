@@ -53,3 +53,7 @@ nik_suggest() {
         nik_message 2 gold 'Czy chodziło o: %s?\n' "$suggestion"
     done < <(printf '%s\n' "$@" | python3 "$NIK_ROOT/tools/suggest.py" "$query")
 }
+
+nik_progress() {
+    if [[ ${NIK_PROGRESS:-0} == 1 ]]; then printf 'NIK:POSTEP\t%s\n' "$1" >&2; fi
+}

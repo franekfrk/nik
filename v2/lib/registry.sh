@@ -75,6 +75,7 @@ nik_registry() {
     nik_register online nik_cmd_online 0 'online' 'Pokaż graczy online.'
     nik_register status nik_cmd_status 0 'status' 'Sprawdź konfigurację, kontener i RCON.'
     nik_register diagnoza nik_cmd_status 0 'diagnoza' 'Diagnostyka połączenia i konfiguracji.'
+    nik_register scenariusz nik_cmd_scenario 0 'scenariusz lista|pokaz NAZWA|zapisz NAZWA KROK...|usun NAZWA|GRACZ NAZWA' 'Własny plan 1–12 komend NIK; walidacja wszystkich kroków przed wykonaniem.'
     nik_register stan nik_cmd_player_status 0 'stan [GRACZ|lista] [json]' 'Stan online, zdrowie, jedzenie, tryb i pozycja; tylko odczyt.'
     nik_register gracze nik_cmd_players 0 'gracze' 'Lista skonfigurowanych graczy.'
     nik_register gracz_lista nik_cmd_players 0 'gracz_lista' 'Lista skonfigurowanych graczy (zgodność v1).'

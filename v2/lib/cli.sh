@@ -10,6 +10,7 @@ nik_completion_candidates() {
             nagroda) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             pogoda) words=(slonce czysto deszcz burza) ;;
             ochrona) words=(status budowanie wylacz) ;;
+            scenariusz) words=(lista pokaz zapisz usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             stan) words=(lista "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             punkt) words=(lista usun "${!NIK_PLAYERS[@]}" "${!NIK_ALIASES[@]}") ;;
             kopia) words=(utworz lista dane) ;;
@@ -23,6 +24,7 @@ nik_completion_candidates() {
         case $command in
             nagroda) while IFS= read -r word; do words+=("$word"); done < <(nik_reward_names) ;;
             prowadz|ratunek) words=("${!NIK_PLACES[@]}") ;;
+            scenariusz) for word in "$NIK_CONFIG"/scenarios/*.json; do [[ -f $word && ! -L $word ]] || continue; word=${word##*/}; words+=("${word%.json}"); done ;;
             stan) words=(json tekst) ;;
             punkt) words=("${!NIK_PLACES[@]}") ;;
             zadanie) words=(pokaz ksiazka gotowe usun) ;;
@@ -52,7 +54,7 @@ nik_main() {
                 --podglad|--dry-run) NIK_DRY_RUN=1; continue ;;
                 --potwierdz|--confirm) NIK_CONFIRM=1; continue ;;
                 --pomoc|--help|-h) help=1; continue ;;
-                --wersja|--version) nik_message 1 title 'NIK 2.7.0\n'; return ;;
+                --wersja|--version) nik_message 1 title 'NIK 2.8.0\n'; return ;;
                 --*) nik_die "Nieznana opcja: $argument" ;;
             esac
         fi
