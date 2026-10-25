@@ -368,3 +368,12 @@ wybór podłoża, dwa wolne bloki, ponowną kontrolę po dwóch sekundach i sprz
 z zachowaniem pierwotnego stanu forceload. W tym teście pominięto wyłącznie
 wstępny odczyt gracza, a końcowy ruch zastąpiono odczytem miejsca sondy.
 Nie teleportowano żadnego gracza.
+
+## Wydanie 2.12.1 — audyt
+
+Raport: [AUDIT.md](AUDIT.md). Nowe regresje sprawdzają SIGKILL w trakcie ruchu,
+błąd publikacji zapisu, wybór odzyskiwania po blokadzie, dowiązanie dziennika,
+magmę w Endzie, dziedziczenie optymalizacji Python oraz dwa wyścigi panelu.
+Zestaw: 160 Python, 276 Bats i 8 JavaScript oraz linty i audyty paczki.
+
+Dodatkowy przypadek odtwarza zmianę wymiaru między odczytami pozycji i blokuje zapis błędnego powrotu przed ruchem.

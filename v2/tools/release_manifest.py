@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-ROOTS={'nik.sh','panel','lib','data','config.example','config','tests','tools','extensions','.github','.gitignore','.shellcheckrc','README.md','VALIDATION.md','ARCHITECTURE.md','SECURITY.md'}
+ROOTS={'nik.sh','panel','lib','data','config.example','config','tests','tools','extensions','.github','.gitignore','.shellcheckrc','README.md','VALIDATION.md','ARCHITECTURE.md','AUDIT.md','SECURITY.md'}
 FORBIDDEN={'__pycache__','.git','.aws','.codex','.agents','private','dist','state','world-backups','backups','logs'}
 
 def public_files(root):

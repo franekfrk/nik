@@ -74,7 +74,7 @@ class AdapterTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    cfg=Path(tmp)/'config';shutil.copytree(ROOT/'config.example',cfg)
    result=subprocess.run(bridge.argv(ROOT,cfg,{'action':'teleport','player':'g1','place':'end','preview':True}),env=bridge.environment(ROOT),capture_output=True,text=True,timeout=20)
-   self.assertEqual(result.returncode,0,result.stdout+result.stderr);final=json.loads(result.stdout.splitlines()[-1])['data'];self.assertTrue(final['ok']);self.assertIn('spreadplayers 16 0 0 8 under 96 false PlayerOne',final['output'])
+   self.assertEqual(result.returncode,0,result.stdout+result.stderr);final=json.loads(result.stdout.splitlines()[-1])['data'];self.assertTrue(final['ok']);self.assertIn('End',final['output']);self.assertIn('Y=96',final['output']);self.assertIn('dwa bloki powietrza',final['output'])
  def test_nether_metadata_and_preview_use_nik_without_private_configuration(self):
   metadata=bridge.metadata(ROOT,ROOT/'config.example');self.assertIn('nether',metadata['teleport_places']);self.assertNotIn('nether',metadata['places'])
   import shutil,subprocess
@@ -95,6 +95,44 @@ class AdapterTests(unittest.TestCase):
   finally:
    if original is None:os.environ.pop('BASH_ENV',None)
    else:os.environ['BASH_ENV']=original
+
+class AuditRaceTests(unittest.TestCase):
+ def test_concurrent_login_attempts_are_reserved_before_password_hashing(self):
+  import concurrent.futures,time
+  from unittest.mock import patch
+  with tempfile.TemporaryDirectory() as tmp:
+   app=server.App({'nik_root':tmp,'origins':['http://127.0.0.1:6767'],'password':{'rounds':100000}})
+   gate=threading.Event();entered=[]
+   def slow_hash(*args):
+    entered.append(1);gate.wait(5);return False
+   def login():
+    try:app.login('bad','same-client')
+    except server.HTTPError as error:return error.status
+   try:
+    with patch.object(server,'password_matches',slow_hash):
+     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+      futures=[pool.submit(login) for _ in range(12)]
+      deadline=time.monotonic()+5
+      while sum(f.done() for f in futures)<7 and time.monotonic()<deadline:time.sleep(.01)
+      gate.set();statuses=[f.result(5) for f in futures]
+    self.assertEqual(len(entered),5);self.assertEqual(statuses.count(429),7);self.assertEqual(statuses.count(401),5)
+   finally:gate.set();app.pool.shutdown(wait=True)
+ def test_cancel_between_running_write_and_spawn_does_not_launch_nik(self):
+  from unittest.mock import patch
+  with tempfile.TemporaryDirectory() as tmp:
+   app=server.App({'nik_root':tmp,'origins':['http://127.0.0.1:6767'],'password':{'rounds':100000}})
+   job={'id':'cancel-before-spawn','owner':'owner','state':'queued','output':'','action':'inventory','timestamp':time.time()}
+   app.jobs[job['id']]=job;self.assertTrue(app.slots.acquire(False))
+   real_temp=server.tempfile.TemporaryFile
+   def cancel_before_spawn():
+    app.cancel(job['id'],'owner');return real_temp()
+   try:
+    with patch.object(server.tempfile,'TemporaryFile',cancel_before_spawn),patch.object(server.subprocess,'Popen') as spawn:
+     app.run_job(job['id'],{'action':'inventory','player':'g1'})
+    spawn.assert_not_called();self.assertEqual(job['state'],'cancelled');self.assertIn('Komenda nie została uruchomiona',job['output'])
+    self.assertEqual(app.history.get(job['id'])['state'],'cancelled')
+   finally:app.pool.shutdown(wait=True)
+
 
 class HTTPTests(unittest.TestCase):
  @classmethod

@@ -34,8 +34,9 @@ class App:
    failures=self.failures.setdefault(ip,collections.deque())
    while failures and failures[0]<now-900:failures.popleft()
    if len(failures)>=5:raise HTTPError(429,'Za dużo prób. Spróbuj ponownie za 15 minut.')
+   # Reserve the attempt before PBKDF2, including concurrent requests.
+   failures.append(now)
   if not password_matches(password,self.config['password']):
-   with self.lock:failures.append(now)
    raise HTTPError(401,'Nieprawidłowe hasło.')
   token=secrets.token_urlsafe(32);key=hashlib.sha256(token.encode()).hexdigest()
   with self.lock:
@@ -85,10 +86,13 @@ class App:
     job['state']='running'
     self.history.put(job)
    with tempfile.TemporaryFile() as out:
-    process=subprocess.Popen(bridge.argv(self.root,self.nik_config,data),env=bridge.environment(self.root),stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT,start_new_session=True)
     with self.lock:
+     # A cancellation between the running-state write and Popen must prevent launch.
+     if job['state']=='cancelled':
+      job['output']='Anulowano zadanie przed uruchomieniem NIK. Komenda nie została uruchomiona.'
+      return
+     process=subprocess.Popen(bridge.argv(self.root,self.nik_config,data),env=bridge.environment(self.root),stdin=subprocess.DEVNULL,stdout=out,stderr=subprocess.STDOUT,start_new_session=True)
      job['process']=process
-     if job['state']=='cancelled':os.killpg(process.pid,signal.SIGTERM)
     decoder=JobEvents(job,self.lock);offset=0;timed_out=False;deadline=time.monotonic()+(2100 if data['action']=='backup' else 180)
     while True:
      try:code=process.wait(timeout=2100 if data['action']=='backup' else min(.3,max(.01,deadline-time.monotonic())))

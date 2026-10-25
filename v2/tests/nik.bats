@@ -41,8 +41,8 @@ if [[ $MOCK_MODE == inventory ]]; then
     printf '%s\n' 'PlayerOne has the following entity data: [{Slot: 0b, id: "minecraft:diamond_sword", count: 1, components: {"minecraft:enchantments": {"minecraft:sharpness": 5, "minecraft:mending": 1}}}, {Slot: 9b, id: "minecraft:torch", count: 64}]'
     exit 0
 fi
-if [[ $MOCK_MODE == nether || $MOCK_MODE == world ]]; then
-    if [[ $MOCK_MODE == world ]]; then mock_dimension=overworld; mock_floor=grass_block; else mock_dimension=the_nether; mock_floor=netherrack; fi
+if [[ $MOCK_MODE == nether || $MOCK_MODE == world || $MOCK_MODE == end ]]; then
+    if [[ $MOCK_MODE == world ]]; then mock_dimension=overworld; mock_floor=grass_block; elif [[ $MOCK_MODE == end ]]; then mock_dimension=the_end; mock_floor=end_stone; else mock_dimension=the_nether; mock_floor=netherrack; fi
     command=${*: -1}
     if [[ -n ${MOCK_SURFACE_FAIL:-} && ( $MOCK_SURFACE_FAIL == spawn && $command == *'run summon '* || $MOCK_SURFACE_FAIL == spread && $command == *'run spreadplayers '* || $MOCK_SURFACE_FAIL == final && $command == *'run tp PlayerOne '* || $MOCK_SURFACE_FAIL == cleanup && $command == *'forceload remove '* ) ]]; then printf 'connection lost\n'; exit 124; fi
     case $command in
@@ -53,7 +53,7 @@ if [[ $MOCK_MODE == nether || $MOCK_MODE == world ]]; then
       *'forceload remove 0 0') rm -f "$MOCK_STATE.forced"; printf 'Unmarked chunk\n'; exit 0 ;;
       'execute in minecraft:'*' if loaded 0 64 0') [[ ${MOCK_SURFACE_LOADED:-1} == 0 ]] || printf 'Test passed\n'; exit 0 ;;
       *'run summon '*) printf 'Summoned new Area Effect Cloud\n'; exit 0 ;;
-      *'run spreadplayers '*) count=0; [[ ! -f $MOCK_STATE.tries ]] || read -r count < "$MOCK_STATE.tries"; printf '%s\n' "$((count+1))" > "$MOCK_STATE.tries"; printf 'Spread 1 entities\n'; exit 0 ;;
+      *'run spreadplayers '*) if [[ ${MOCK_SURFACE_NO_SURFACE:-0} == 1 ]]; then printf 'Could not spread 1 entities around 8.00, 8.00\n'; exit 0; fi; count=0; [[ ! -f $MOCK_STATE.tries ]] || read -r count < "$MOCK_STATE.tries"; printf '%s\n' "$((count+1))" > "$MOCK_STATE.tries"; printf 'Spread 1 entities\n'; exit 0 ;;
       *'run kill @s') printf 'Killed Area Effect Cloud\n'; exit 0 ;;
       *'run data get entity @s Pos')
         if [[ ${MOCK_SURFACE_REJECT_FIRST:-0} == 1 && $(cat "$MOCK_STATE.tries") == 1 ]]; then exit 0; fi
@@ -71,9 +71,17 @@ if [[ $MOCK_MODE == travel ]]; then
         if [[ ${MOCK_LOCATION_ERROR:-} == "$field" ]]; then printf 'No entity was found\n'; exit 0; fi
         case $field in
           Pos) printf '%s\n' 'PlayerOne has the following entity data: [12.5d, 64.0d, -9.25d]' ;;
-          Dimension) printf '%s\n' 'PlayerOne has the following entity data: "minecraft:the_nether"' ;;
-          Rotation) printf '%s\n' 'PlayerOne has the following entity data: [45.5f, -12.0f]' ;;
+          Dimension)
+            dimension=minecraft:the_nether
+            if [[ ${MOCK_DIMENSION_CHANGES:-0} == 1 ]]; then
+                count=0; [[ ! -f $MOCK_STATE.dimensionreads ]] || read -r count < "$MOCK_STATE.dimensionreads"
+                printf '%s\n' "$((count+1))" > "$MOCK_STATE.dimensionreads"
+                ((count == 0)) || dimension=minecraft:overworld
+            fi
+            printf 'PlayerOne has the following entity data: "%s"\n' "$dimension" ;;
+          Rotation) printf '%s\n' "${MOCK_ROTATION_RESPONSE:-PlayerOne has the following entity data: [45.5f, -12.0f]}" ;;
         esac
+    elif [[ ${MOCK_TP_WAIT:-0} == 1 ]]; then touch "$MOCK_STATE.waiting"; sleep 60
     elif [[ ${MOCK_TP_TRANSPORT:-0} == 1 ]]; then printf 'connection lost\n'; exit 124
     elif [[ ${MOCK_TP_EMPTY:-0} == 1 ]]; then :
     elif [[ -n ${MOCK_TP_RESPONSE:-} ]]; then printf '%s\n' "$MOCK_TP_RESPONSE"
@@ -115,7 +123,7 @@ nik() { bash "$ROOT/nik.sh" "$@"; }
 @test 'help without configuration or Docker' { run nik --config /missing help; [ "$status" -eq 0 ]; [[ $output == *'encik'* ]]; }
 @test 'command help without configuration' { run nik --config /missing encik --help; [ "$status" -eq 0 ]; }
 @test 'empty invocation shows help' { run nik; [ "$status" -eq 0 ]; }
-@test 'version' { run nik --version; [ "$output" = 'NIK 2.12.0' ]; }
+@test 'version' { run nik --version; [ "$output" = 'NIK 2.12.1' ]; }
 @test 'unknown command rejected' { run nik nonexistent; [ "$status" -eq 2 ]; }
 @test 'source preserves caller shell flags' { run bash -c 'before=$-; source "$1"; [[ $before == "$-" ]]; nik --version' _ "$ROOT/nik.sh"; [ "$status" -eq 0 ]; }
 @test 'player alias resolves, Polish item resolves, no Docker in dry run' { run nik --dry-run daj g1 diamentowy_kilof; [ "$status" -eq 0 ]; [[ $output == *'give PlayerOne minecraft:diamond_pickaxe 1'* ]]; [ ! -e "$MOCK_CALLS" ]; }
@@ -707,7 +715,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   run nik pomoc
   [ "$status" -eq 0 ]; [[ $output == *'--konfiguracja'* ]]
   run nik --wersja
-  [ "$status" -eq 0 ]; [[ $output == *'2.12.0'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'2.12.1'* ]]
 }
 @test 'Polish confirmation flag authorizes a command' {
   run nik --potwierdz wyczysc g1
@@ -724,7 +732,7 @@ d g1 diament --dry-run' _ "$ROOT/nik.sh"
   export MOCK_MODE=travel
   run nik gdzie g1
   [ "$status" -eq 0 ]; [[ $output == *'X: 12.5   Y: 64   Z: -9.25'* && $output == *'minecraft:the_nether'* && $output == *'45.5°'* ]]
-  [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 3 ]; [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]; [ ! -d "$NIK_STATE" ]
+  [ "$(grep -c '^exec ' "$MOCK_CALLS")" -eq 4 ]; [[ $(cat "$MOCK_CALLS") != *'run tp '* ]]; [ ! -d "$NIK_STATE" ]
 }
 @test 'teleport captures source before changing position and return consumes point' {
   export MOCK_MODE=travel
@@ -1323,46 +1331,46 @@ MOCK
   ! grep -q 'item modify' "$MOCK_CALLS"
 }
 
-@test 'End shortcut selects a native safe surface without Docker in preview' {
+@test 'End shortcut previews its validated landing probe without Docker' {
   printf 'end\t-12\t120\t7\tminecraft:the_end\n' >> "$NIK_CONFIG/places.tsv"
   run nik --podglad tp g1 end
-  [ "$status" -eq 0 ]; [[ $output == *'execute in minecraft:the_end run spreadplayers 16 0 0 8 under 96 false PlayerOne'* ]]
+  [ "$status" -eq 0 ]; [[ $output == *'End'* && $output == *'Y=96'* && $output == *'dwa bloki powietrza'* ]]
   [[ $output != *'run tp PlayerOne -12 120 7'* && $output != *'effect give'* && $output != *'gamemode'* && $output != *'fill '* ]]
   [ ! -e "$MOCK_CALLS" ]; [ ! -d "$NIK_STATE" ]
 }
 @test 'End shortcut keeps normal return coordinates and never modifies terrain or effects' {
-  export MOCK_MODE=travel
+  export MOCK_MODE=end
   run nik tp g1 end; [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
   [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
-  ! grep -E 'effect give|fill |setblock|gamemode|forceload' "$MOCK_CALLS"
+  ! grep -E 'effect give|fill |setblock|gamemode' "$MOCK_CALLS"
   run nik powrot g1; [ "$status" -eq 0 ]; [[ $output == *'Teleported'* ]]
   grep -q 'execute in minecraft:the_nether run tp PlayerOne 12.5 64 -9.25 45.5 -12' "$MOCK_CALLS"
 }
 @test 'End shortcut aborts before movement when player position is unavailable' {
-  export MOCK_MODE=travel MOCK_LOCATION_ERROR=Pos
+  export MOCK_MODE=end MOCK_LOCATION_ERROR=Pos
   run nik tp g1 end; [ "$status" -ne 0 ]; ! grep -q 'run spreadplayers' "$MOCK_CALLS"
   [ ! -e "$NIK_STATE/returns/PlayerOne.json" ]; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
 }
 @test 'End surface rejection never falls back to a fixed height or overwrites a previous return' {
-  export MOCK_MODE=travel
+  export MOCK_MODE=end
   run nik tp g1 dom; [ "$status" -eq 2 ] # example config intentionally has no home
   run nik tp g1 1 64 2; [ "$status" -eq 0 ]; cp "$NIK_STATE/returns/PlayerOne.json" "$WORK/old-return"
-  export MOCK_TP_RESPONSE='Could not spread 1 entities around 16.00, 0.00'
+  export MOCK_SURFACE_NO_SURFACE=1
   run nik tp g1 end; [ "$status" -ne 0 ]; cmp "$WORK/old-return" "$NIK_STATE/returns/PlayerOne.json"
   [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]; [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
 }
 @test 'End timeout preserves an emergency origin and does not retry movement' {
-  export MOCK_MODE=travel MOCK_TP_TRANSPORT=1
+  export MOCK_MODE=end MOCK_SURFACE_FAIL=final
   run nik tp g1 end; [ "$status" -eq 124 ]; [[ $output == *'wynik teleportacji jest niepewny'* ]]
   [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]; [ "$(stat -c %a "$NIK_STATE/returns/PlayerOne.uncertain.json")" = 600 ]
   [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 1 ]
-  unset MOCK_TP_TRANSPORT
+  unset MOCK_SURFACE_FAIL
   run nik powrot g1; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
 }
 @test 'empty teleport acknowledgement is uncertain and emergency return remains on a failed return' {
-  export MOCK_MODE=travel MOCK_TP_EMPTY=1
+  export MOCK_MODE=end MOCK_SURFACE_FINAL_EMPTY=1
   run nik tp g1 end; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
-  unset MOCK_TP_EMPTY; export MOCK_TP_ERROR=1
+  unset MOCK_SURFACE_FINAL_EMPTY; export MOCK_MODE=travel MOCK_TP_ERROR=1
   run nik powrot g1; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
 }
 @test 'End shortcut validates player and argument count before any Docker call' {
@@ -1375,27 +1383,27 @@ MOCK
 }
 @test 'an emergency return symlink prevents End movement' {
   mkdir -p "$NIK_STATE/returns"; ln -s "$WORK/elsewhere" "$NIK_STATE/returns/PlayerOne.uncertain.json"
-  export MOCK_MODE=travel
+  export MOCK_MODE=end
   run nik tp g1 end; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
 }
 
 @test 'uncertain End teleport keeps the previous return and recovery takes priority' {
-  export MOCK_MODE=travel
+  export MOCK_MODE=end
   run nik tp g1 1 64 2; [ "$status" -eq 0 ]
   python3 - "$NIK_STATE/returns/PlayerOne.json" <<'PYRECORD'
 import json,sys
 p=sys.argv[1];data=json.load(open(p));data['position']=['5','65','6'];open(p,'w').write(json.dumps(data))
 PYRECORD
   cp "$NIK_STATE/returns/PlayerOne.json" "$WORK/old-return"
-  export MOCK_TP_TRANSPORT=1
+  export MOCK_SURFACE_FAIL=final
   run nik --json tp g1 end; [ "$status" -eq 124 ]; [[ $output == *'teleport_uncertain'* ]]
   cmp "$WORK/old-return" "$NIK_STATE/returns/PlayerOne.json"
-  unset MOCK_TP_TRANSPORT
+  unset MOCK_SURFACE_FAIL
   run nik powrot g1; [ "$status" -eq 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.json" ]
   grep -q 'run tp PlayerOne 12.5 64 -9.25' "$MOCK_CALLS"
 }
 @test 'unavailable Docker aborts End teleport before movement without emergency state' {
-  export MOCK_MODE=travel MOCK_RUNNING=false
+  export MOCK_MODE=end MOCK_RUNNING=false
   run nik tp g1 end; [ "$status" -ne 0 ]
   ! grep -q 'run spreadplayers' "$MOCK_CALLS"; [ ! -e "$NIK_STATE/returns/PlayerOne.uncertain.json" ]
 }
@@ -1565,4 +1573,102 @@ PYRECORD
 @test 'World shortcut appears only in tp destination completion' {
   run nik __complete tp 2 swi; [ "$status" -eq 0 ]; [[ $output == *swiat* ]]
   run nik __complete prowadz 2 swi; [ "$status" -eq 0 ]; [[ $output != *swiat* ]]
+}
+
+@test 'audit End rejects damaging floor and validates landing space before player movement' {
+  export MOCK_MODE=end MOCK_SURFACE_FLOOR=magma_block
+  run nik tp g1 end; [ "$status" -ne 0 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  [ "$(grep -c 'run spreadplayers' "$MOCK_CALLS")" -eq 4 ]; [ ! -e "$MOCK_STATE.forced" ]
+  export MOCK_SURFACE_FLOOR=end_stone
+  run nik tp g1 end; [ "$status" -eq 0 ]
+  grep -q 'if dimension minecraft:the_end.*if block ~ ~-1 ~ minecraft:end_stone if block ~ ~ ~ minecraft:air if block ~ ~1 ~ minecraft:air run tp PlayerOne ~ ~ ~' "$MOCK_CALLS"
+}
+@test 'audit inherited Python optimization cannot bypass position validation or alter caller settings' {
+  export MOCK_MODE=travel PYTHONOPTIMIZE=1 MOCK_ROTATION_RESPONSE='PlayerOne has the following entity data: [0.0f, 91.0f]'
+  run nik tp g1 1 64 2; [ "$status" -eq 2 ]; ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"
+  run bash -c 'source "$1"; [[ $PYTHONOPTIMIZE == 1 ]]; nik --version' _ "$ROOT/nik.sh"
+  [ "$status" -eq 0 ]
+}
+@test 'audit SIGKILL during teleport retains a discoverable private recovery journal' {
+  export MOCK_MODE=travel MOCK_TP_WAIT=1
+  run python3 - "$ROOT" "$MOCK_STATE" "$NIK_STATE" <<'PYSIGNAL'
+import os,signal,subprocess,sys,time
+from pathlib import Path
+root,state,runtime=map(Path,sys.argv[1:]);p=subprocess.Popen(['bash',str(root/'nik.sh'),'tp','g1','1','64','2'],start_new_session=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+try:
+ deadline=time.monotonic()+10
+ while not Path(str(state)+'.waiting').exists():
+  assert p.poll() is None,'CLI exited before mutation'
+  assert time.monotonic()<deadline,'Mutation did not start'
+  time.sleep(.01)
+ os.killpg(p.pid,signal.SIGKILL);p.communicate(timeout=5)
+ journal=runtime/'returns/PlayerOne.inflight.json'
+ assert journal.is_file() and journal.stat().st_mode&0o777==0o600
+finally:
+ if p.poll() is None:os.killpg(p.pid,signal.SIGKILL);p.communicate()
+PYSIGNAL
+  [ "$status" -eq 0 ]
+  unset MOCK_TP_WAIT
+  run nik tp g1 2 65 3; [ "$status" -eq 2 ]; [[ $output == *'Najpierw użyj powrot'* ]]
+  run nik powrot g1; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/returns/PlayerOne.inflight.json" ]
+  grep -q 'run tp PlayerOne 12.5 64 -9.25' "$MOCK_CALLS"
+}
+@test 'audit failed publication of confirmed teleport keeps a usable recovery journal' {
+  export MOCK_MODE=travel
+  cat > "$WORK/bin/mv" <<'MOCKMV'
+#!/usr/bin/env bash
+if [[ ${*: -1} == "$NIK_STATE/returns/PlayerOne.json" ]]; then exit 1; fi
+exec /usr/bin/mv "$@"
+MOCKMV
+  chmod +x "$WORK/bin/mv"
+  run nik tp g1 1 64 2; [ "$status" -ne 0 ]; [ -f "$NIK_STATE/returns/PlayerOne.inflight.json" ]
+  rm "$WORK/bin/mv"
+  run nik powrot g1; [ "$status" -eq 0 ]; [ ! -e "$NIK_STATE/returns/PlayerOne.inflight.json" ]
+}
+@test 'audit waiting return selects the recovery journal after obtaining its lock' {
+  export MOCK_MODE=travel
+  run nik tp g1 1 64 2; [ "$status" -eq 0 ]
+  cat > "$WORK/bin/flock" <<'MOCKLOCK'
+#!/usr/bin/env bash
+if [[ ${*: -1} == 8 ]]; then touch "$MOCK_STATE.lockwait"; fi
+exec /usr/bin/flock "$@"
+MOCKLOCK
+  chmod +x "$WORK/bin/flock"
+  run python3 - "$ROOT" "$MOCK_STATE" "$NIK_STATE" <<'PYLOCK'
+import fcntl,json,subprocess,sys,time
+from pathlib import Path
+root,state,runtime=map(Path,sys.argv[1:]);directory=runtime/'returns'
+with (directory/'PlayerOne.lock').open('a') as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ p=subprocess.Popen(['bash',str(root/'nik.sh'),'powrot','g1'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+ try:
+  deadline=time.monotonic()+10
+  while not Path(str(state)+'.lockwait').exists():
+   assert p.poll() is None and time.monotonic()<deadline
+   time.sleep(.01)
+  data=json.loads((directory/'PlayerOne.json').read_text());data['position']=['9','65','8']
+  (directory/'PlayerOne.inflight.json').write_text(json.dumps(data))
+ finally:fcntl.flock(lock,fcntl.LOCK_UN)
+ output=p.communicate(timeout=10)[0];assert p.returncode==0,output
+PYLOCK
+  [ "$status" -eq 0 ]; grep -q 'run tp PlayerOne 9 65 8' "$MOCK_CALLS"
+  [ ! -e "$NIK_STATE/returns/PlayerOne.inflight.json" ]
+}
+
+@test 'audit inflight recovery symlink is rejected before Docker and cannot be overwritten' {
+  mkdir -p "$NIK_STATE/returns"; printf 'keep\n' > "$WORK/elsewhere"
+  ln -s "$WORK/elsewhere" "$NIK_STATE/returns/PlayerOne.inflight.json"
+  export MOCK_MODE=end
+  run nik tp g1 end; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  run nik powrot g1; [ "$status" -eq 2 ]; [ ! -e "$MOCK_CALLS" ]
+  [ "$(cat "$WORK/elsewhere")" = keep ]
+}
+
+@test 'audit a dimension change during capture aborts before teleport and preserves the old return' {
+  export MOCK_MODE=travel
+  run nik tp g1 1 64 2; [ "$status" -eq 0 ]; cp "$NIK_STATE/returns/PlayerOne.json" "$WORK/saved"
+  rm "$MOCK_CALLS"; export MOCK_DIMENSION_CHANGES=1
+  run nik tp g1 3 65 4; [ "$status" -ne 0 ]; [[ $output == *'zmienił wymiar'* ]]
+  ! grep -q 'run tp PlayerOne' "$MOCK_CALLS"; cmp "$WORK/saved" "$NIK_STATE/returns/PlayerOne.json"
+  [ ! -e "$NIK_STATE/returns/PlayerOne.inflight.json" ]
 }

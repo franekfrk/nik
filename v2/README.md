@@ -8,6 +8,16 @@ i komputer. Dziecko lub gracz może wpisywać komendy w terminalu albo wybierać
 czynności w panelu WWW. Oba interfejsy wywołują ten sam `nik.sh` i korzystają
 z tej samej konfiguracji, walidacji oraz logiki gry.
 
+## NIK 2.12.1 — poprawki po audycie
+
+Teleporty zachowują prywatny dziennik odzyskiwania przed wysłaniem ruchu,
+również na wypadek przerwania procesu. `powrot` wybiera najnowszy zapis po
+uzyskaniu blokady. End ma teraz taką samą kontrolę podłoża i miejsca na postać
+jak Nether i zwykły świat, w obszarze X/Z 2–14 do Y=96.
+Poprawiono anulowanie przed startem NIK, równoległe logowania oraz działanie
+walidatorów przy odziedziczonym `PYTHONOPTIMIZE`.
+Szczegóły, testy i ograniczenia: [raport audytu](AUDIT.md).
+
 ## NIK 2.12.0 — bezpieczny powrót do zwykłego świata
 
 ```bash
@@ -65,8 +75,8 @@ powrot g1
 
 `end` jest wbudowanym celem teleportacji. Minecraft dobiera miejsce z podłożem
 i dwoma wolnymi blokami na postać w pobliżu środka głównej wyspy: obszar
-X 8–24, Z -8–8, poniżej Y 96. Korzysta z natywnego `spreadplayers` i reguł
-bezpiecznego podłoża vanilla. Przy braku odpowiedniego miejsca komenda kończy
+X/Z 2–14, do Y 96. Natywny `spreadplayers` wybiera pozycję sondy, a NIK
+dodatkowo sprawdza dozwolone podłoże i dwa bloki powietrza. Przy braku odpowiedniego miejsca komenda kończy
 się błędem przed teleportacją. Normalne zasady gry i walki nadal obowiązują.
 
 Cel działa również w panelu „Teleport do punktu”, bez zapisanego miejsca i bez

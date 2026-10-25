@@ -84,3 +84,12 @@ wszystkich kroków. Panel interpretuje wyłącznie zdarzenia protokołu; logika 
 pozostaje w NIK. `panel/static/enhancements.js` zawiera prezentację slotów,
 postępu i formularzy. Migracja SQLite dodaje kolejność ulubionych i preferencje
 katalogu, zachowując dotychczasową historię i identyfikatory skrótów.
+
+## Odzyskiwanie teleportów
+
+Przed wysłaniem ruchu NIK przenosi zwalidowany punkt do prywatnego pliku
+`returns/GRACZ.inflight.json`. Dziennik przeżywa przerwanie procesu i jest
+wybierany przez `powrot` dopiero po uzyskaniu blokady gracza, przed `uncertain`
+i zwykłym punktem. Jawne odrzucenie komendy usuwa dziennik; brak potwierdzenia
+przenosi go do `uncertain`. Udany ruch zapisuje zwykły punkt. Wszystkie trzy
+wymiary mają wspólne sondowanie i ponowną kontrolę bezpośrednio przy ruchu.

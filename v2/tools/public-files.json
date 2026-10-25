@@ -3,6 +3,7 @@
   ".gitignore",
   ".shellcheckrc",
   "ARCHITECTURE.md",
+  "AUDIT.md",
   "README.md",
   "SECURITY.md",
   "VALIDATION.md",

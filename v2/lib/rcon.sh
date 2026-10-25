@@ -33,7 +33,7 @@ nik_rcon() {
     local allow_missing=${2:-0}
     [[ $command != *$'\n'* && $command != *$'\r'* ]] || nik_die 'Niedozwolony znak w poleceniu.'
     if [[ $allow_missing == surface_probe ]]; then
-        [[ $command =~ ^execute\ in\ minecraft:(the_nether|overworld)\ if\ loaded\ 0\ 64\ 0$ || $command =~ ^execute\ as\ [0-9a-f-]{36}\ at\ @s\ if\ dimension\ minecraft:(the_nether|overworld)\ if\ entity\ @s\[type=minecraft:area_effect_cloud,tag=nik_(nether|swiat)_[0-9a-f]{32}\]\ if\ block\ ~\ ~-1\ ~\ minecraft:[a-z_]+\ if\ block\ ~\ ~\ ~\ minecraft:air\ if\ block\ ~\ ~1\ ~\ minecraft:air\ run\ data\ get\ entity\ @s\ Pos$ ]] || nik_die 'Błędna komenda kontroli lądowania.'
+        [[ $command =~ ^execute\ in\ minecraft:(the_nether|overworld|the_end)\ if\ loaded\ 0\ 64\ 0$ || $command =~ ^execute\ as\ [0-9a-f-]{36}\ at\ @s\ if\ dimension\ minecraft:(the_nether|overworld|the_end)\ if\ entity\ @s\[type=minecraft:area_effect_cloud,tag=nik_(nether|swiat|end)_[0-9a-f]{32}\]\ if\ block\ ~\ ~-1\ ~\ minecraft:[a-z_]+\ if\ block\ ~\ ~\ ~\ minecraft:air\ if\ block\ ~\ ~1\ ~\ minecraft:air\ run\ data\ get\ entity\ @s\ Pos$ ]] || nik_die 'Błędna komenda kontroli lądowania.'
     fi
     if ((NIK_DRY_RUN)); then nik_message 1 gold '[podgląd] %s\n' "$command"; return 0; fi
     # Abort before mutation when audit logging is unavailable.
@@ -59,7 +59,7 @@ nik_rcon() {
     if [[ $allow_missing == surface_probe ]]; then
         if [[ -z ${plain//[[:space:]]/} || $plain == 'Test failed' ]]; then
             noop=1; silent=1; NIK_RCON_MATCHED=0
-        elif [[ $plain != *' has the following entity data: ['* && ! ( $command =~ ^execute\ in\ minecraft:(the_nether|overworld)\ if\ loaded\ 0\ 64\ 0$ && $plain == 'Test passed' ) ]]; then
+        elif [[ $plain != *' has the following entity data: ['* && ! ( $command =~ ^execute\ in\ minecraft:(the_nether|overworld|the_end)\ if\ loaded\ 0\ 64\ 0$ && $plain == 'Test passed' ) ]]; then
             rc=1
         fi
     fi

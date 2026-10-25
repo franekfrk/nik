@@ -1,17 +1,19 @@
 # shellcheck shell=bash
 nik_location_python() { command -v python3 >/dev/null || nik_die 'Pozycja i powrót wymagają Python 3.'; }
 nik_location_capture() {
-    local player=$1 pos dimension rotation
+    local player=$1 pos dimension rotation before_dimension
     nik_location_python
+    nik_rcon "data get entity $player Dimension" >/dev/null || return "$?"; before_dimension=$NIK_RCON_RESPONSE
     nik_rcon "data get entity $player Pos" >/dev/null || return "$?"; pos=$NIK_RCON_RESPONSE
     nik_rcon "data get entity $player Dimension" >/dev/null || return "$?"; dimension=$NIK_RCON_RESPONSE
+    [[ $before_dimension == "$dimension" ]] || { nik_message 2 error 'NIK: gracz zmienił wymiar podczas odczytu pozycji. Przerwano odczyt.\n'; return 1; }
     nik_rcon "data get entity $player Rotation" >/dev/null || return "$?"; rotation=$NIK_RCON_RESPONSE
     python3 "$NIK_ROOT/tools/location.py" capture "$player" "$NIK_CONTAINER" "$pos" "$dimension" "$rotation"
 }
 nik_cmd_where() {
     nik_args 1 "$@"; nik_player "$1"; local player=$REPLY record point x y z dimension yaw pitch
     if ((NIK_DRY_RUN)); then
-        nik_rcon "data get entity $player Pos"; nik_rcon "data get entity $player Dimension"; nik_rcon "data get entity $player Rotation"; return
+        nik_rcon "data get entity $player Dimension"; nik_rcon "data get entity $player Pos"; nik_rcon "data get entity $player Dimension"; nik_rcon "data get entity $player Rotation"; return
     fi
     record=$(nik_location_capture "$player") || return "$?"
     # A private temporary file avoids evaluating or sourcing RCON output.
@@ -36,7 +38,7 @@ nik_travel_directory() {
     REPLY=$directory/returns
 }
 nik_teleport() (
-    local player=$1 command=$2 directory record pending moved=0
+    local player=$1 command=$2 directory record pending inflight
     if ((NIK_DRY_RUN)); then
         nik_message 1 gold '[podgląd] zapamiętanie pozycji sprzed teleportacji\n'
         nik_rcon "$command"; return
@@ -44,41 +46,48 @@ nik_teleport() (
     nik_location_python
     nik_travel_directory || return "$?"; directory=$REPLY
     record=$directory/$player.json
-    [[ ! -L $record && ! -L $directory/$player.uncertain.json && ! -L $directory/$player.lock ]] || nik_die 'Punkt powrotu lub blokada jest dowiązaniem.'
+    [[ ! -L $record && ! -L $directory/$player.uncertain.json && ! -L $directory/$player.inflight.json && ! -L $directory/$player.lock ]] || nik_die 'Punkt powrotu lub blokada jest dowiązaniem.'
     exec 8> "$directory/$player.lock"
     nik_lock 8 || return "$?"
-    # Prepare a validated record on the same filesystem before teleporting.
+    inflight=$directory/$player.inflight.json
+    [[ ! -e $inflight ]] || nik_die 'Poprzednia teleportacja nie ma potwierdzenia. Najpierw użyj powrot GRACZ.'
+    # A named journal written before mutation survives process termination, including SIGKILL.
+    # The anonymous temporary file is removed on errors before that point.
     pending=$(mktemp "$directory/.pending.XXXXXX") || return "$?"
-    trap 'if (( !moved )); then rm -f -- "$pending"; fi' EXIT
+    trap 'rm -f -- "$pending"' EXIT
     nik_location_capture "$player" > "$pending" || return "$?"
+    mv -f -- "$pending" "$inflight" || return "$?"
     local rc=0
     nik_rcon "$command" || rc=$?
     if ((rc)); then
         if [[ ${NIK_RCON_UNCERTAIN:-0} == 1 ]]; then
-            moved=1
-            mv -f -- "$pending" "$directory/$player.uncertain.json" || { nik_message 2 error 'NIK: zachowano awaryjny punkt powrotu w %s.\n' "$pending"; return "$rc"; }
+            mv -f -- "$inflight" "$directory/$player.uncertain.json" || { nik_message 2 error 'NIK: zachowano awaryjny punkt powrotu w %s.\n' "$inflight"; return "$rc"; }
             if [[ -n ${NIK_RESULT_PATH:-} ]]; then
                 printf '%s' "${NIK_RCON_ERROR_RESPONSE:-}" | python3 "$NIK_ROOT/tools/result_data.py" error teleport_uncertain 'Wynik teleportacji jest niepewny. Zapisano pozycję wyjściową; po odzyskaniu RCON użyj polecenia powrot.' || true
             fi
             nik_message 2 error 'NIK: wynik teleportacji jest niepewny. Zapisano pozycję wyjściową; po odzyskaniu RCON użyj powrot GRACZ.\n'
+        else
+            rm -f -- "$inflight" || return "$?"
         fi
         return "$rc"
     fi
-    moved=1
-    mv -f -- "$pending" "$record" || { nik_message 2 error 'NIK: teleport wykonany; zachowano punkt odzyskiwania w %s.\n' "$pending"; return 1; }
+    mv -f -- "$inflight" "$record" || { nik_message 2 error 'NIK: teleport wykonany; zachowano punkt odzyskiwania w %s.\n' "$inflight"; return 1; }
     rm -f -- "$directory/$player.uncertain.json"
 )
 nik_cmd_back() (
     nik_args 1 "$@"; nik_player "$1"; local player=$REPLY directory record fields x y z dimension yaw pitch
     nik_location_python
     directory=$NIK_STATE/returns; record=$directory/$player.json
-    [[ ! -L $NIK_STATE && ! -L $directory && ! -L $record && ! -L $directory/$player.uncertain.json && ! -L $directory/$player.lock ]] || nik_die 'Punkt powrotu jest dowiązaniem.'
-    if [[ -f $directory/$player.uncertain.json ]]; then record=$directory/$player.uncertain.json; fi
-    [[ -f $record ]] || nik_die 'Brak punktu powrotu. Najpierw teleportuj gracza przez NIK.'
+    [[ ! -L $NIK_STATE && ! -L $directory && ! -L $record && ! -L $directory/$player.uncertain.json && ! -L $directory/$player.inflight.json && ! -L $directory/$player.lock ]] || nik_die 'Punkt powrotu jest dowiązaniem.'
+    [[ -d $directory ]] || nik_die 'Brak punktu powrotu. Najpierw teleportuj gracza przez NIK.'
     if (( !NIK_DRY_RUN )); then
         umask 077
         exec 8> "$directory/$player.lock" || return "$?"; nik_lock 8 || return "$?"
     fi
+    # Select recovery priority after obtaining the same lock as teleport.
+    if [[ -f $directory/$player.uncertain.json ]]; then record=$directory/$player.uncertain.json; fi
+    if [[ -f $directory/$player.inflight.json ]]; then record=$directory/$player.inflight.json; fi
+    [[ -f $record ]] || nik_die 'Brak punktu powrotu. Najpierw teleportuj gracza przez NIK.'
     fields=$(python3 "$NIK_ROOT/tools/location.py" read "$record" "$player" "$NIK_CONTAINER") || return "$?"
     IFS=$'\t' read -r x y z dimension yaw pitch <<< "$fields"
     nik_rcon "execute in $dimension run tp $player $x $y $z $yaw $pitch" || return "$?"
@@ -93,13 +102,8 @@ nik_cmd_dad() {
     nik_rcon "tellraw $player $message"
 }
 
-# Vanilla selects a valid surface with two free blocks and its teleportable
-# block tag. Under 96 avoids the tops of tall End builds and obsidian towers.
-nik_tp_end() {
-    local player=$1
-    nik_message 1 command 'NIK: szukam miejsca do lądowania na głównej wyspie Endu.\n'
-    nik_teleport "$player" "execute in minecraft:the_end run spreadplayers 16 0 0 8 under 96 false $player"
-}
+# All built-in dimensions share the same floor and body-space validation.
+nik_tp_end() { nik_tp_surface "$1" end; }
 
 # Only the single landing chunk is held, with a private recovery lease written
 # before force loading. An interrupted cleanup is retried on the next teleport to that dimension.
@@ -131,6 +135,9 @@ nik_tp_surface() (
     local player=$1 destination=$2 identity uuid nbt tag attempt floor guard selected='' lease ready=0
     local dimension label maximum floors
     case $destination in
+        end)
+            dimension=minecraft:the_end; label=End; maximum=96
+            floors='end_stone obsidian end_stone_bricks purpur_block purpur_pillar stone cobblestone' ;;
         nether)
             dimension=minecraft:the_nether; label=Nether; maximum=120
             floors='netherrack basalt blackstone soul_sand soul_soil nether_bricks red_nether_bricks obsidian crying_obsidian polished_basalt smooth_basalt crimson_nylium warped_nylium' ;;
@@ -148,6 +155,11 @@ nik_tp_surface() (
     fi
     nik_location_python
     nik_travel_directory >/dev/null || return "$?"
+    local suffix
+    for suffix in json uncertain.json inflight.json lock; do
+        [[ ! -L $NIK_STATE/returns/$player.$suffix ]] || nik_die 'Punkt powrotu lub blokada jest dowiązaniem.'
+    done
+    [[ ! -e $NIK_STATE/returns/$player.inflight.json ]] || nik_die 'Poprzednia teleportacja nie ma potwierdzenia. Najpierw użyj powrot GRACZ.'
     [[ ! -L $lease_path && ! -L $lock_path ]] || nik_die 'Blokada lub zapis lądowania jest dowiązaniem.'
     exec 9> "$lock_path"
     nik_lock 9 || return "$?"

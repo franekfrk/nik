@@ -5,7 +5,7 @@
 NIK to przede wszystkim **modułowy projekt Bash z polskimi komendami do
 Minecraft Java**. Obsługuje przedmioty, zaklęcia, efekty, teleporty, tryby gry,
 zestawy, wiadomości i kopie świata. Terminal ma kolorowe listy i baner,
-uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.12.0**.
+uzupełnianie Tab oraz podpowiedzi przy literówkach. Aktualna wersja: **2.12.1**.
 
 Do projektu należy też **opcjonalny panel WWW/PWA NIK Mobile** — minecraftowa
 nakładka na oryginalny `nik.sh`. **Dziecko lub gracz może wpisywać polskie
@@ -330,6 +330,16 @@ Testy nie korzystają z produkcyjnego świata ani prywatnych ustawień.
 
 Pełne użycie: [README v2](v2/README.md). Zakres kontroli i ograniczenia:
 [VALIDATION.md](v2/VALIDATION.md).
+
+## NIK 2.12.1 — poprawki po audycie
+
+Teleporty zachowują prywatny dziennik odzyskiwania przed wysłaniem ruchu,
+również na wypadek przerwania procesu. `powrot` wybiera najnowszy zapis po
+uzyskaniu blokady. End ma teraz taką samą kontrolę podłoża i miejsca na postać
+jak Nether i zwykły świat, w obszarze X/Z 2–14 do Y=96.
+Poprawiono anulowanie przed startem NIK, równoległe logowania oraz działanie
+walidatorów przy odziedziczonym `PYTHONOPTIMIZE`.
+Szczegóły, testy i ograniczenia: [raport audytu](v2/AUDIT.md).
 
 ## NIK 2.12.0 — bezpieczny powrót do zwykłego świata
 
